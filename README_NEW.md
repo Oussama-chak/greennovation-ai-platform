@@ -12,7 +12,6 @@
 ## 🎯 Features
 
 ### 🤖 AI-Powered Agents
-
 - **Learning Agent**: Personalized learning assistance with knowledge retrieval
 - **Readiness Agent**: Student readiness scoring and well-being assessment
 - **Energy Agent**: Track and optimize energy levels throughout the day
@@ -22,7 +21,6 @@
 - **Orchestrator**: Unified multi-agent coordination and context management
 
 ### 📚 Core Features
-
 - **Conversational AI Chat**: Real-time learning support via intelligent agents
 - **Project Management**: Create, track, and manage academic projects with milestones
 - **Well-Being Dashboard**: Monitor mood, sleep, focus, and readiness scores
@@ -32,7 +30,6 @@
 - **Session Management**: Persistent conversation history and context
 
 ### 📊 Analytics & Insights
-
 - **Readiness Scoring**: AI-driven assessment of student preparedness
 - **Emotional Timeline**: Track mood and well-being patterns over time
 - **Smart Recommendations**: Personalized insights based on check-in data
@@ -92,10 +89,9 @@ greenNovation/
 ## 🚀 Quick Start
 
 ### Prerequisites
-
 - **Python**: 3.10+
 - **Node.js**: 18+ (for frontend)
-- **API Keys**:
+- **API Keys**: 
   - `GROQ_API_KEY` (for LLM inference)
   - `MISTRAL_API_KEY` (optional, for additional AI features)
 
@@ -151,36 +147,30 @@ Frontend will be available at: **http://localhost:5173**
 ## 📖 API Endpoints
 
 ### Chat
-
 - `POST /api/chat/send` - Send message and get AI response
 
 ### Projects
-
 - `GET /api/projects` - List all projects
 - `POST /api/projects` - Create new project
 - `PUT /api/projects/{project_id}` - Update project
 - `DELETE /api/projects/{project_id}` - Delete project
 
 ### Well-Being & Readiness
-
 - `POST /api/readiness/checkin` - Submit daily well-being check-in
 - `GET /api/readiness/today` - Get today's readiness score
 - `GET /api/readiness/history` - Get readiness history
 - `GET /api/readiness/dashboard` - Get dashboard data
 
 ### Learning Corpus
-
 - `POST /api/corpus/upload` - Upload learning materials
 - `GET /api/corpus/search` - Semantic search in corpus
 - `GET /api/corpus/documents` - List uploaded documents
 
 ### Forest
-
 - `GET /api/forest/inventory` - Get earned trees and rewards
 - `POST /api/forest/plant` - Plant tree after achievement
 
 ### Health
-
 - `GET /api/health` - Server health check
 
 **Full API docs available at**: `http://127.0.0.1:8000/docs`
@@ -204,7 +194,6 @@ CORS_ORIGINS=http://localhost:5173,http://localhost:5501
 ### Data Directory
 
 By default, projects and search indices are stored in `./data/`:
-
 ```
 data/
 ├── projects.json          # Saved projects
@@ -212,7 +201,6 @@ data/
 ```
 
 To use a custom data directory:
-
 ```bash
 export GREENNOVATION_DATA_DIR="/path/to/data"
 ```
@@ -225,15 +213,15 @@ The platform uses **LangGraph** for multi-agent orchestration with a state graph
 
 ### Agent Types
 
-| Agent               | Purpose                                   | Model           |
-| ------------------- | ----------------------------------------- | --------------- |
-| **Learning Agent**  | Provide personalized learning support     | Groq LLM        |
-| **Readiness Agent** | Calculate well-being and readiness scores | Rules + LLM     |
-| **Energy Agent**    | Track daily energy patterns               | LLM             |
-| **Profile Agent**   | Build user learning profiles              | LLM + Embedding |
-| **Planner Agent**   | Plan and prioritize tasks                 | LLM             |
-| **RAG Agent**       | Query learning corpus                     | Embedding + LLM |
-| **Orchestrator**    | Route and coordinate all agents           | LangGraph       |
+| Agent | Purpose | Model |
+|-------|---------|-------|
+| **Learning Agent** | Provide personalized learning support | Groq LLM |
+| **Readiness Agent** | Calculate well-being and readiness scores | Rules + LLM |
+| **Energy Agent** | Track daily energy patterns | LLM |
+| **Profile Agent** | Build user learning profiles | LLM + Embedding |
+| **Planner Agent** | Plan and prioritize tasks | LLM |
+| **RAG Agent** | Query learning corpus | Embedding + LLM |
+| **Orchestrator** | Route and coordinate all agents | LangGraph |
 
 ### Workflow
 
@@ -256,7 +244,6 @@ User
 ## 🗄️ Database Schemas
 
 ### Project
-
 ```python
 {
   "id": "p-xxxxxxxx",
@@ -273,7 +260,6 @@ User
 ```
 
 ### Readiness Check-in
-
 ```python
 {
   "date": "2026-04-22",
@@ -292,7 +278,6 @@ User
 ### Project Dependencies
 
 **Core AI/ML:**
-
 - `langgraph>=0.2.55` - Multi-agent orchestration
 - `langchain-groq>=0.2.0` - Groq LLM integration
 - `langchain-community>=0.2.0` - LangChain ecosystem
@@ -300,13 +285,11 @@ User
 - `faiss-cpu` - Vector search
 
 **Backend API:**
-
 - `fastapi>=0.115.0` - Web framework
 - `uvicorn[standard]>=0.32.0` - ASGI server
 - `pydantic>=2.0` - Data validation
 
 **Frontend:**
-
 - `react>=19` - UI library
 - `vite>=6` - Build tool
 - `@tanstack/react-router` - Routing
@@ -325,7 +308,6 @@ pytest ai/test/test_readiness.py -v
 ### Code Style
 
 Format with:
-
 ```bash
 # Frontend
 npm run format
@@ -348,7 +330,6 @@ Contributions are welcome! Please follow these steps:
 5. **Open** a Pull Request
 
 ### Development Guidelines
-
 - Write tests for new features
 - Follow existing code style
 - Update documentation for API changes
@@ -361,36 +342,18 @@ Contributions are welcome! Please follow these steps:
 ### Backend Issues
 
 **"GROQ_API_KEY not set"**
-
 ```bash
 export GROQ_API_KEY="your-key"
 ```
 
 **"ModuleNotFoundError: No module named 'backend'"**
-
 ```bash
 # Make sure you're in the repo root
 cd greenNovation
 pip install -e ".[api]"
 ```
 
-**`ValueError: numpy.dtype size changed` (pandas / numpy mismatch)**
-
-Your global `pandas` was likely built for NumPy 1.x while NumPy 2.x is installed. Reinstall from the repo root:
-
-```bash
-cd greenNovation
-pip install -e ".[api]" --upgrade --force-reinstall pandas scikit-learn
-```
-
-Or use a fresh venv: `python -m venv venv`, activate it, then `pip install -e ".[api]"`.
-
-**Protobuf / TensorFlow error when loading `transformers`**
-
-The app sets `TRANSFORMERS_NO_TF=1` in `bootstrap()` so TensorFlow is not loaded. If you still see protobuf errors, upgrade pandas (above) or use a dedicated venv.
-
 **CORS errors in frontend**
-
 ```bash
 export CORS_ORIGINS="http://localhost:5173,http://localhost:5501"
 ```
@@ -398,14 +361,12 @@ export CORS_ORIGINS="http://localhost:5173,http://localhost:5501"
 ### Frontend Issues
 
 **Vite port already in use**
-
 ```bash
 # Change port in vite.config.ts or run on different port
 PORT=5174 npm run dev
 ```
 
 **Module resolution errors**
-
 ```bash
 # Clear node_modules and reinstall
 rm -rf node_modules bun.lockb
@@ -417,7 +378,6 @@ bun install
 ## 📊 Project Status
 
 ### ✅ Completed
-
 - [x] Multi-agent AI orchestration
 - [x] FastAPI backend with core endpoints
 - [x] React frontend with UI components
@@ -427,18 +387,24 @@ bun install
 - [x] Learning corpus with FAISS indexing
 
 ### 🚧 In Progress
-
 - [ ] Enhanced well-being dashboard
 - [ ] Real-time notifications
 - [ ] Advanced analytics
 - [ ] Mobile app support
 
 ### 📋 Planned
-
 - [ ] User authentication & multi-user support
 - [ ] Database integration (PostgreSQL)
 - [ ] Advanced RAG with hybrid search
 - [ ] Social features (leaderboards, peer support)
+
+---
+
+## 📞 Support & Contact
+
+- **Issues**: Report bugs on [GitHub Issues](https://github.com/yourusername/greenNovation/issues)
+- **Discussions**: Ask questions on [GitHub Discussions](https://github.com/yourusername/greenNovation/discussions)
+- **Email**: contact@greennovation.dev
 
 ---
 
@@ -455,5 +421,13 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 - UI components by [Radix UI](https://www.radix-ui.com/)
 
 ---
+
+## 🌟 Show Your Support
+
+If you find greenNovation helpful, please consider:
+- ⭐ Starring the repository
+- 🔄 Sharing with others
+- 🐛 Reporting issues and bugs
+- 💡 Contributing features and improvements
 
 **Made with 💚 for students everywhere.**

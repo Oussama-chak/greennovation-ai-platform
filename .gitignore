@@ -66,6 +66,9 @@ hf_cache/
 # 📊 Data
 # =========================
 data/
+!frontend/src/data/
+frontend/src/data/*
+!frontend/src/data/teacher.ts
 datasets/
 *.csv
 *.jsonl
