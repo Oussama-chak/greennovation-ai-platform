@@ -359,6 +359,16 @@ Provide:
     hint_s = ph.strip() if isinstance(ph, str) else None
     task_instruction = apply_prompt_hint(task_instruction, answer_type, hint_s)
 
+    personalization_contract = """
+PERSONALIZATION CONTRACT:
+1. Answer the student's exact question first (QUESTION); do not give a generic lecture.
+2. If the query shows confusion: intuition (1-2 sentences), then smallest example, then numbered steps.
+3. Match depth and difficulty from TASK and LENGTH GUIDANCE; do not exceed them.
+4. If STUDENT STATE conflicts with TEACHING STYLE, prefer STUDENT STATE.
+5. Use HISTORY for continuity (same topic → build on prior turns, avoid repeating basics unnecessarily).
+6. Do not mention Digital Twin, profile agent, readiness, or internal labels.
+""".strip()
+
     return f"""
 You are an academic assistant. Use only the provided course context.
 If the answer is not supported by the context, say:
@@ -376,6 +386,7 @@ TASK:
 {readiness_block}
 {student_twin_block}
 
+{personalization_contract}
 
 BEHAVIOR:
   {style_hint}

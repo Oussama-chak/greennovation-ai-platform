@@ -56,18 +56,28 @@ Extracted behavioral signals:
 Current student digital twin:
 {_serialize_dict(student_twin or {})}
 
-Infer BOTH:
-1. profile_vector: the short-term teaching profile for this turn.
-2. student_twin: the updated long-term learner model.
+Follow this process internally, then output JSON only:
 
-For student_twin:
-- If this is the first meaningful interaction, create the Twin from the current query, history, signals, and explicit profile.
-- Do not leave fields as "unknown" when there is clear learning evidence.
-- Update cognitive_state, learning_preferences, adaptation_strategy, longitudinal_summary, and evidence.
-- Preserve useful prior Twin knowledge unless the new evidence clearly changes it.
-- Keep the model focused only on learning behavior, study state, preferences, and adaptation.
-- Do not infer sensitive traits.
-- Be conservative, but do not copy defaults when evidence exists.
+STEP 1 — QUERY LINGUISTICS (current query + history + signals):
+- Confusion: "don't understand", "confused", "lost", "stuck", signs_of_confusion
+- Request shape: "step by step", "with examples", "explain simply", "tiny steps"
+- Topic: CS/math keywords in query; use topic_domain from signals when present
+- Frustration/repeat: "tired of", "again", "still", repeated_topic in signals
+- Pace: prefers_short_answers vs prefers_detailed_answers vs request_step_by_step
+
+STEP 2 — profile_vector (this turn):
+- Map STEP 1 to preferred_explanation_style, preferred_format, pace, adaptation_tags
+- confidence: 0.9+ only with multiple consistent signals; 0.5–0.75 if query-only
+
+STEP 3 — student_twin (longitudinal):
+- Merge STEP 1–2 with the existing twin; rewrite longitudinal_summary in 2–4 sentences
+- Set cognitive_state from confusion, engagement (follow-up questions), stability
+- Set adaptation_strategy.scaffolding and explanation_depth to match confusion level
+- evidence: add one entry quoting the student's exact words from this query
+- If first meaningful interaction, initialize twin from query + signals; else evolve prior state
+- Do not infer sensitive traits; do not use "unknown" when STEP 1 gives clear evidence
+
+Output profile_vector and student_twin per schema.
 """.strip()
 
     response = await client.chat.complete_async(
