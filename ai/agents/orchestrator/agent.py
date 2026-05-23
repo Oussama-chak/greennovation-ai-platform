@@ -176,6 +176,12 @@ def _merge_outputs(state: Dict[str, Any]) -> Dict[str, Any]:
     profile_vector = state.get("profile_vector", {})
     retrieved_chunks = state.get("retrieved_chunks", [])
     readiness_signal = state.get("readiness_signal", {}) or state.get("session_signals", {})
+    student_twin = state.get("student_twin", {}) or {}
+    adaptation_strategy = (
+        student_twin.get("adaptation_strategy", {})
+        if isinstance(student_twin, dict)
+        else {}
+    )
     energy_decision = state.get("energy_decision", {})
 
     preferred_format = profile_vector.get("preferred_format", "")
@@ -203,6 +209,7 @@ def _merge_outputs(state: Dict[str, Any]) -> Dict[str, Any]:
         "readiness_signal": readiness_signal,
         "energy_decision": energy_decision,
         "response_strategy": response_strategy,
+        "adaptation_strategy": adaptation_strategy,
     }
 
     response_draft = {

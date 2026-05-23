@@ -7,8 +7,7 @@ from dotenv import load_dotenv
 
 from mistralai.client import Mistral
 from ai.agents.profile.prompt import PROFILE_SYSTEM_PROMPT
-from ai.agents.profile.schema import ProfileInference
-
+from ai.agents.profile.schema import ProfileAndTwinInference
 load_dotenv()
 
 def _serialize_history(history: List[Dict[str, Any]]) -> str:
@@ -32,8 +31,9 @@ async def infer_profile_with_mistral(
     history: List[Dict[str, Any]],
     user_profile: Dict[str, Any],
     signals: Dict[str, Any],
+    student_twin: Dict[str, Any] | None = None,
     model: str = "mistral-small-latest",
-) -> ProfileInference:
+) -> ProfileAndTwinInference:
     """
     Infer the student teaching profile using Mistral structured output.
     """
@@ -53,8 +53,21 @@ Explicit user profile:
 Extracted behavioral signals:
 {_serialize_dict(signals)}
 
-Infer the best teaching-adaptation profile for this student right now.
-Be conservative and only use evidence from the inputs.
+Current student digital twin:
+{_serialize_dict(student_twin or {})}
+
+Infer BOTH:
+1. profile_vector: the short-term teaching profile for this turn.
+2. student_twin: the updated long-term learner model.
+
+For student_twin:
+- If this is the first meaningful interaction, create the Twin from the current query, history, signals, and explicit profile.
+- Do not leave fields as "unknown" when there is clear learning evidence.
+- Update cognitive_state, learning_preferences, adaptation_strategy, longitudinal_summary, and evidence.
+- Preserve useful prior Twin knowledge unless the new evidence clearly changes it.
+- Keep the model focused only on learning behavior, study state, preferences, and adaptation.
+- Do not infer sensitive traits.
+- Be conservative, but do not copy defaults when evidence exists.
 """.strip()
 
     response = await client.chat.complete_async(
@@ -66,8 +79,8 @@ Be conservative and only use evidence from the inputs.
         response_format={
             "type": "json_schema",
             "json_schema": {
-                "name": "ProfileInference",
-                "schema": ProfileInference.model_json_schema(),
+                "name": "ProfileAndTwinInference",
+                "schema": ProfileAndTwinInference.model_json_schema(),
             },
         },
         temperature=0.2,
@@ -82,4 +95,4 @@ Be conservative and only use evidence from the inputs.
         )
 
     data = json.loads(content)
-    return ProfileInference.model_validate(data)
+    return ProfileAndTwinInference.model_validate(data)

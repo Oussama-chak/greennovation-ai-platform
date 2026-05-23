@@ -7,7 +7,12 @@ from ai.graph.learning_workflow import run_learning_pipeline
 from backend.app.schemas.chat import ChatRequest, ChatResponse, EnergySnapshot, SessionInsightsPayload
 from backend.app.services import session_service as sessions
 
-
+from ai.agents.student_modeling import merge_pipeline_into_twin
+from backend.app.services import digital_twin_store
+from ai.agents.student_modeling.adapters import (
+    energy_signals_from_twin,
+    learning_context_from_twin,
+)
 def _energy_to_snapshot(state: dict) -> EnergySnapshot | None:
     """Expose energy agent decision for the workspace sidebar."""
     ed = state.get("energy_decision") or {}
@@ -62,6 +67,13 @@ def reply_to_text(final_response: object) -> tuple[str, str | list | None]:
 async def chat_turn(req: ChatRequest) -> ChatResponse:
     sid = req.session_id or str(uuid.uuid4())
     base = sessions.load_session_copy(sid) or sessions.default_session_state()
+    twin = digital_twin_store.load_twin()
+    twin_dict = twin.model_dump()
+
+    base["student_twin"] = twin_dict
+    base["learning_twin_context"] = learning_context_from_twin(twin_dict)
+    base["energy_twin_signals"] = energy_signals_from_twin(twin_dict)
+
 
     base["query"] = req.message.strip()
     if req.intent:
@@ -80,6 +92,12 @@ async def chat_turn(req: ChatRequest) -> ChatResponse:
 
     try:
         state = await run_learning_pipeline(base)
+        updated_twin = merge_pipeline_into_twin(twin, state)
+        digital_twin_store.save_twin(updated_twin)
+        updated_twin_dict = updated_twin.model_dump()
+        state["student_twin"] = updated_twin_dict
+        state["learning_twin_context"] = learning_context_from_twin(updated_twin_dict)
+        state["energy_twin_signals"] = energy_signals_from_twin(updated_twin_dict)
     except Exception as e:
         return ChatResponse(
             session_id=sid,

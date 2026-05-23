@@ -286,6 +286,7 @@ class AgentContext(TypedDict, total=False):
 
     profile_vector: ProfileVector
     readiness_signal: ReadinessSignal
+    student_twin: Dict[str, Any]
     energy_decision: EnergyDecision
     cached_answer: Any
     cached_rag_chunks: List[RetrievedChunk]
