@@ -329,7 +329,7 @@ function CalendarPage() {
                       e.opensWorkspace ? (
                         <Link
                           key={e.id}
-                          to="/workspace"
+                          to="/learning"
                           onClick={(ev) => ev.stopPropagation()}
                           className={`truncate text-[10px] font-semibold rounded-md px-1.5 py-0.5 ${KIND_META[e.kind].chip} hover:opacity-90`}
                         >
@@ -444,7 +444,7 @@ function CalendarPage() {
                   return e.opensWorkspace ? (
                     <Link
                       key={e.id}
-                      to="/workspace"
+                      to="/learning"
                       className={`group block rounded-2xl border border-border p-3 hover:shadow-soft transition ring-0 hover:ring-2 ${meta.ring}`}
                     >
                       {body}

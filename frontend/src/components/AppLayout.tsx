@@ -6,7 +6,6 @@ import {
   GraduationCap,
   HeartPulse,
   Trees,
-  BookOpen,
   Sparkles,
   Bell,
   Search,
@@ -31,7 +30,6 @@ const navItems = [
   { to: "/calendar", label: "Calendar", icon: CalendarDays },
   { to: "/projects", label: "Projects", icon: FolderKanban },
   { to: "/learning", label: "Learning", icon: GraduationCap },
-  { to: "/workspace", label: "Workspace", icon: BookOpen },
   { to: "/community", label: "Community", icon: Users },
   { to: "/wellbeing", label: "Well-being", icon: HeartPulse },
   { to: "/forest", label: "Eco Forest", icon: Trees },
@@ -169,10 +167,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
               </div>
 
               <div className="flex items-center gap-2 ml-auto">
-                <div className="hidden sm:flex items-center gap-2 rounded-full bg-success/10 text-success px-3 py-1.5 text-xs font-semibold">
-                  <Zap className="h-3.5 w-3.5" />
-                  Eco mode
-                </div>
                 <BreathingBreakButton onClick={() => setBreakOpen(true)} />
                 <BreathingBreakIconButton onClick={() => setBreakOpen(true)} />
                 <button className="relative rounded-xl p-2.5 hover:bg-muted transition-colors">

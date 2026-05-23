@@ -3,6 +3,7 @@ import { useState, type ReactNode } from "react";
 import {
   BarChart3,
   BookOpen,
+  FolderKanban,
   GraduationCap,
   LineChart,
   LogOut,
@@ -20,6 +21,7 @@ const teacherNav: ReadonlyArray<{ to: string; label: string; icon: LucideIcon }>
   { to: "/teacher", label: "Overview", icon: BarChart3 },
   { to: "/teacher/classes", label: "Classes", icon: Users },
   { to: "/teacher/courses", label: "Courses", icon: BookOpen },
+  { to: "/teacher/projects", label: "Projects", icon: FolderKanban },
   { to: "/teacher/analytics", label: "Analytics", icon: LineChart },
 ];
 
@@ -196,8 +198,9 @@ function GraduationHelperBanner() {
       <GraduationCap className="h-4 w-4 text-primary" />
       <span>
         Tip: <strong className="text-foreground">Classes</strong> show your students.{" "}
-        <strong className="text-foreground">Courses</strong> hold the chapters and materials those
-        classes use.
+        <strong className="text-foreground">Courses</strong> hold chapters and materials.{" "}
+        <strong className="text-foreground">Projects</strong> assign tasks students track on their
+        dashboard.
       </span>
     </div>
   );

@@ -1,5 +1,16 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import type { Project } from "@/data/projects";
+import { mergeProjectsForStudent } from "@/data/projects";
+import { currentStudent } from "@/data/studentProfile";
+import { loadTeacherAssignments } from "@/context/TeacherProjectsContext";
 import { fetchProjects, saveProjects } from "@/lib/api";
 
 const STORAGE_KEY = "greennovation-projects-v1";
@@ -16,6 +27,11 @@ function loadFromStorage(): Project[] {
   } catch {
     return [];
   }
+}
+
+function mergeWithTeacherAssignments(saved: Project[]): Project[] {
+  const templates = loadTeacherAssignments();
+  return mergeProjectsForStudent(saved, templates, currentStudent.classId);
 }
 
 type ProjectsContextValue = {
@@ -38,9 +54,9 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
       try {
         const remote = await fetchProjects();
         if (cancelled) return;
-        setProjects(remote);
+        setProjects(mergeWithTeacherAssignments(remote));
       } catch {
-        if (!cancelled) setProjects(loadFromStorage());
+        if (!cancelled) setProjects(mergeWithTeacherAssignments(loadFromStorage()));
       } finally {
         if (!cancelled) setHydrated(true);
       }
@@ -49,6 +65,17 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, []);
+
+  // Re-merge when teacher updates assignments in another tab
+  useEffect(() => {
+    if (!hydrated || typeof window === "undefined") return;
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== "greennovation-teacher-projects-v1") return;
+      setProjects((prev) => mergeWithTeacherAssignments(prev));
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [hydrated]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !hydrated) return;
@@ -85,3 +112,6 @@ export function useProjects() {
 export function useProjectsOptional() {
   return useContext(ProjectsContext);
 }
+
+/** @deprecated Used internally — exported for tests if needed */
+export { mergeWithTeacherAssignments };

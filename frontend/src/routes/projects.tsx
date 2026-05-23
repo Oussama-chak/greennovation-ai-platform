@@ -16,7 +16,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { awardTree } from "@/lib/treeInventory";
 import { useProjects } from "@/context/ProjectsContext";
-import { createEmptyProject, projectProgressPercent, type Milestone, type Project } from "@/data/projects";
+import {
+  createEmptyProject,
+  isTeacherAssigned,
+  projectProgressPercent,
+  type Milestone,
+  type Project,
+} from "@/data/projects";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -71,10 +77,11 @@ function ProjectCard({
 }) {
   const progress = projectProgressPercent(p);
   const [taskDraft, setTaskDraft] = useState("");
+  const fromTeacher = isTeacherAssigned(p);
 
   const submitTask = () => {
     const name = taskDraft.trim();
-    if (!name) return;
+    if (!name || fromTeacher) return;
     onAddTask(p.id, name);
     setTaskDraft("");
   };
@@ -83,9 +90,16 @@ function ProjectCard({
     <article className="rounded-3xl bg-card border border-border p-6 shadow-card hover:shadow-soft transition">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
-          <span className="text-[10px] uppercase tracking-widest font-bold rounded-full bg-secondary text-secondary-foreground px-2.5 py-1">
-            {p.tag}
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] uppercase tracking-widest font-bold rounded-full bg-secondary text-secondary-foreground px-2.5 py-1">
+              {p.tag}
+            </span>
+            {fromTeacher ? (
+              <span className="text-[10px] uppercase tracking-widest font-bold rounded-full bg-primary/10 text-primary px-2.5 py-1">
+                Class assignment
+              </span>
+            ) : null}
+          </div>
           <h3 className="font-display text-lg font-bold mt-2 leading-tight">{p.name}</h3>
         </div>
         <div className="text-right">
@@ -106,10 +120,7 @@ function ProjectCard({
       </div>
 
       <div className="rounded-2xl gradient-warm p-4 mb-4">
-        <div className="flex items-center gap-1.5 text-xs font-bold text-accent-foreground uppercase tracking-wider mb-1">
-          <Sparkles className="h-3.5 w-3.5" />
-          AI suggests next
-        </div>
+
         <p className="text-sm font-medium">{p.nextStep}</p>
       </div>
 
@@ -139,38 +150,44 @@ function ProjectCard({
         ))}
       </ul>
 
-      <div className="rounded-2xl border border-border bg-muted/40 p-2.5 mb-4">
-        <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-0.5">
-          <MessageSquare className="h-3 w-3" />
-          Task chat — add a task
-        </div>
-        <form
-          className="flex items-center gap-2 rounded-xl border border-border bg-background px-2 py-1 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20 transition"
-          onSubmit={(e) => {
-            e.preventDefault();
-            submitTask();
-          }}
-        >
-          <MessageSquare className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-hidden />
-          <Input
-            value={taskDraft}
-            onChange={(e) => setTaskDraft(e.target.value)}
-            placeholder="Type a task for this project…"
-            className="h-8 border-0 bg-transparent shadow-none focus-visible:ring-0 px-0 text-sm"
-            autoComplete="off"
-            aria-label="New task for this project"
-          />
-          <Button
-            type="submit"
-            size="icon"
-            className="h-8 w-8 shrink-0 rounded-lg"
-            disabled={!taskDraft.trim()}
-            aria-label="Add task"
+      {fromTeacher ? (
+        <p className="text-xs text-muted-foreground rounded-2xl border border-dashed border-border bg-muted/30 px-3 py-2.5 mb-4">
+          Tasks are set by your professor — check them off as you complete each step.
+        </p>
+      ) : (
+        <div className="rounded-2xl border border-border bg-muted/40 p-2.5 mb-4">
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-0.5">
+            <MessageSquare className="h-3 w-3" />
+            Task chat — add a task
+          </div>
+          <form
+            className="flex items-center gap-2 rounded-xl border border-border bg-background px-2 py-1 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20 transition"
+            onSubmit={(e) => {
+              e.preventDefault();
+              submitTask();
+            }}
           >
-            <Send className="h-3.5 w-3.5" />
-          </Button>
-        </form>
-      </div>
+            <MessageSquare className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-hidden />
+            <Input
+              value={taskDraft}
+              onChange={(e) => setTaskDraft(e.target.value)}
+              placeholder="Type a task for this project…"
+              className="h-8 border-0 bg-transparent shadow-none focus-visible:ring-0 px-0 text-sm"
+              autoComplete="off"
+              aria-label="New task for this project"
+            />
+            <Button
+              type="submit"
+              size="icon"
+              className="h-8 w-8 shrink-0 rounded-lg"
+              disabled={!taskDraft.trim()}
+              aria-label="Add task"
+            >
+              <Send className="h-3.5 w-3.5" />
+            </Button>
+          </form>
+        </div>
+      )}
 
       <div className="flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-1">

@@ -12,6 +12,7 @@ import {
   dueRelativePhrase,
   projectProgressPercent,
 } from "@/data/projects";
+import { continueStudyTarget } from "@/data/studentLearning";
 import {
   Flame,
   Clock,
@@ -124,12 +125,7 @@ function Dashboard() {
             <Calendar className="h-4 w-4" />
             View calendar
           </Link>
-          <Link
-            to="/workspace"
-            className="rounded-xl gradient-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold shadow-glow hover:opacity-95 transition"
-          >
-            Start session
-          </Link>
+          <StartSessionLink className="cta-attention rounded-xl gradient-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold hover:opacity-95" />
         </div>
       </div>
 
@@ -156,7 +152,10 @@ function Dashboard() {
       {/* Bottom row: avatar tip + projects */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-1">
-          <AvatarTip mood="reading" message="You learn calculus best in 25-min sprints. Try one before lunch — I'll keep your forest watered. 🌳" />
+          <AvatarTip
+            mood="reading"
+            message="You learn calculus best in 25-min sprints. Try one before lunch — I'll keep your forest watered. 🌳"
+          />
         </div>
         <ActiveProjectsCard className="lg:col-span-2" />
       </div>
@@ -278,8 +277,16 @@ function ReadinessCard({
             </div>
           </div>
           <div className="flex-1 space-y-2.5">
-            <Stat label="Workload ease" value={loading || error ? 0 : bars.workloadEase} color="primary" />
-            <Stat label="Study stability" value={loading || error ? 0 : bars.stability} color="info" />
+            <Stat
+              label="Workload ease"
+              value={loading || error ? 0 : bars.workloadEase}
+              color="primary"
+            />
+            <Stat
+              label="Study stability"
+              value={loading || error ? 0 : bars.stability}
+              color="info"
+            />
             <Stat label="Recovery" value={loading || error ? 0 : bars.recovery} color="warning" />
           </div>
         </div>
@@ -325,9 +332,7 @@ function NextActionCard() {
         </span>
       </div>
       <div className="relative">
-        <div className="text-xs uppercase tracking-widest opacity-70 font-semibold mb-2">
-          .
-        </div>
+        <div className="text-xs uppercase tracking-widest opacity-70 font-semibold mb-2">.</div>
         <h2 className="font-display text-2xl lg:text-3xl font-bold leading-tight">
           Review{" "}
           <span className="underline decoration-primary-foreground/40 decoration-2 underline-offset-4">
@@ -335,16 +340,14 @@ function NextActionCard() {
           </span>{" "}
         </h2>
         <p className="opacity-85 text-sm mt-3 max-w-md">
-          A quick pass through your Python readings before you practice keeps the next session sharp.
+          A quick pass through your Python readings before you practice keeps the next session
+          sharp.
         </p>
         <div className="flex flex-wrap items-center gap-2 mt-5">
-          <Link
-            to="/workspace"
-            className="inline-flex items-center gap-2 rounded-xl bg-primary-foreground text-primary px-4 py-2.5 text-sm font-bold hover:scale-[1.02] transition shadow-soft"
-          >
-            Start session
-            <ArrowRight className="h-4 w-4" />
-          </Link>
+          <StartSessionLink
+            className="cta-attention inline-flex items-center gap-2 rounded-xl bg-primary-foreground text-primary px-4 py-2.5 text-sm font-bold hover:scale-[1.02]"
+            showArrow
+          />
           <button className="rounded-xl bg-primary-foreground/15 px-4 py-2.5 text-sm font-medium hover:bg-primary-foreground/25 transition">
             Explain why
           </button>
@@ -496,7 +499,9 @@ function DeadlinesCard() {
               <div className="text-sm font-medium truncate">{d.title}</div>
               <div className="text-xs text-muted-foreground">{d.sub}</div>
             </div>
-            <span className={`text-[10px] uppercase tracking-wider rounded-full px-2 py-1 font-bold ${urgencyColor[d.urgency]}`}>
+            <span
+              className={`text-[10px] uppercase tracking-wider rounded-full px-2 py-1 font-bold ${urgencyColor[d.urgency]}`}
+            >
               {d.urgency}
             </span>
           </li>
@@ -538,12 +543,11 @@ function WeakTopicsCard() {
           </li>
         ))}
       </ul>
-      <Link
-        to="/workspace"
+      <StartSessionLink
         className="mt-5 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
-      >
-        Open workspace <ArrowRight className="h-3.5 w-3.5" />
-      </Link>
+        label="Continue learning"
+        showArrow
+      />
     </Card>
   );
 }
@@ -579,16 +583,52 @@ function ActiveProjectsCard({ className = "" }: { className?: string }) {
               </div>
               <div className="font-semibold text-sm leading-snug">{p.name}</div>
               <div className="mt-3 h-2 rounded-full bg-muted overflow-hidden">
-                <div className="h-full gradient-primary rounded-full" style={{ width: `${progress}%` }} />
+                <div
+                  className="h-full gradient-primary rounded-full"
+                  style={{ width: `${progress}%` }}
+                />
               </div>
               <div className="mt-3 flex items-center justify-between text-xs gap-2">
                 <span className="text-muted-foreground line-clamp-1">Next: {p.nextStep}</span>
-                <span className="font-semibold text-foreground shrink-0">{dueRelativePhrase(p.dueISO)}</span>
+                <span className="font-semibold text-foreground shrink-0">
+                  {dueRelativePhrase(p.dueISO)}
+                </span>
               </div>
             </Link>
           );
         })}
       </div>
     </Card>
+  );
+}
+
+function StartSessionLink({
+  className,
+  label = "Start session",
+  showArrow = false,
+}: {
+  className?: string;
+  label?: string;
+  showArrow?: boolean;
+}) {
+  const target = continueStudyTarget();
+  if (target) {
+    return (
+      <Link
+        to="/learning/$courseId/study"
+        params={{ courseId: target.courseId }}
+        search={{ chapter: target.chapterId }}
+        className={className}
+      >
+        {label}
+        {showArrow ? <ArrowRight className="h-4 w-4" /> : null}
+      </Link>
+    );
+  }
+  return (
+    <Link to="/learning" className={className}>
+      {label}
+      {showArrow ? <ArrowRight className="h-3.5 w-3.5" /> : null}
+    </Link>
   );
 }

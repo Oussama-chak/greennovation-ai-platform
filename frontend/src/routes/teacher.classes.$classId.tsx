@@ -1,6 +1,7 @@
 import { Link, createFileRoute, notFound } from "@tanstack/react-router";
-import { ArrowLeft, BookOpen, Mail, MoreHorizontal } from "lucide-react";
+import { ArrowLeft, BookOpen, FolderKanban, ListChecks, Mail, MoreHorizontal } from "lucide-react";
 import { TeacherShell } from "@/components/teacher/TeacherShell";
+import { useTeacherProjects } from "@/context/TeacherProjectsContext";
 import {
   getClass,
   getCourse,
@@ -23,6 +24,8 @@ function ClassDetailPage() {
   const { cls } = Route.useLoaderData();
   const course = getCourse(cls.courseId);
   const summary = summarizeClass(cls);
+  const { projectsForClass } = useTeacherProjects();
+  const classProjects = projectsForClass(cls.id);
 
   return (
     <TeacherShell
@@ -121,6 +124,53 @@ function ClassDetailPage() {
             ) : (
               <p className="text-sm text-muted-foreground mt-2">Course not found.</p>
             )}
+          </div>
+
+          <div className="rounded-3xl bg-card border border-border p-5 shadow-card">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div>
+                <div className="text-[10px] uppercase tracking-widest text-primary font-bold">
+                  Projects
+                </div>
+                <h2 className="font-display text-xl font-bold">Assigned work</h2>
+              </div>
+              <Link
+                to="/teacher/projects"
+                className="text-xs font-semibold text-primary hover:underline whitespace-nowrap"
+              >
+                Manage all
+              </Link>
+            </div>
+            {classProjects.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No projects assigned to this class yet.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {classProjects.map((project) => (
+                  <li
+                    key={project.id}
+                    className="rounded-xl border border-border px-3 py-2.5 text-sm"
+                  >
+                    <div className="font-semibold">{project.name}</div>
+                    <div className="text-xs text-muted-foreground flex items-center gap-2 mt-1">
+                      <span className="inline-flex items-center gap-1">
+                        <ListChecks className="h-3 w-3" />
+                        {project.milestones.length} tasks
+                      </span>
+                      <span>· Due {project.due}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Link
+              to="/teacher/projects"
+              className="mt-4 inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs font-semibold hover:bg-muted"
+            >
+              <FolderKanban className="h-4 w-4" />
+              Add project or tasks
+            </Link>
           </div>
 
           <div className="rounded-3xl bg-card border border-border p-5 shadow-card">

@@ -16,6 +16,8 @@ class Project(BaseModel):
     nextStep: str = Field(default="", max_length=2000)
     notes: int = Field(default=0, ge=0, le=1_000_000)
     milestones: list[Milestone] = Field(default_factory=list)
+    assignedByTeacher: bool | None = None
+    classId: str | None = Field(default=None, max_length=128)
 
 
 class ProjectsPayload(BaseModel):

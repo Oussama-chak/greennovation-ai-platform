@@ -19,6 +19,8 @@ import { Route as CommunityRouteImport } from './routes/community'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TeacherIndexRouteImport } from './routes/teacher.index'
+import { Route as LearningIndexRouteImport } from './routes/learning.index'
+import { Route as TeacherProjectsRouteImport } from './routes/teacher.projects'
 import { Route as TeacherCoursesRouteImport } from './routes/teacher.courses'
 import { Route as TeacherClassesRouteImport } from './routes/teacher.classes'
 import { Route as TeacherAnalyticsRouteImport } from './routes/teacher.analytics'
@@ -26,6 +28,7 @@ import { Route as TeacherCoursesIndexRouteImport } from './routes/teacher.course
 import { Route as TeacherClassesIndexRouteImport } from './routes/teacher.classes.index'
 import { Route as TeacherCoursesCourseIdRouteImport } from './routes/teacher.courses.$courseId'
 import { Route as TeacherClassesClassIdRouteImport } from './routes/teacher.classes.$classId'
+import { Route as LearningCourseIdStudyRouteImport } from './routes/learning.$courseId.study'
 
 const WorkspaceRoute = WorkspaceRouteImport.update({
   id: '/workspace',
@@ -77,6 +80,16 @@ const TeacherIndexRoute = TeacherIndexRouteImport.update({
   path: '/',
   getParentRoute: () => TeacherRoute,
 } as any)
+const LearningIndexRoute = LearningIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => LearningRoute,
+} as any)
+const TeacherProjectsRoute = TeacherProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
+  getParentRoute: () => TeacherRoute,
+} as any)
 const TeacherCoursesRoute = TeacherCoursesRouteImport.update({
   id: '/courses',
   path: '/courses',
@@ -112,13 +125,18 @@ const TeacherClassesClassIdRoute = TeacherClassesClassIdRouteImport.update({
   path: '/$classId',
   getParentRoute: () => TeacherClassesRoute,
 } as any)
+const LearningCourseIdStudyRoute = LearningCourseIdStudyRouteImport.update({
+  id: '/$courseId/study',
+  path: '/$courseId/study',
+  getParentRoute: () => LearningRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/community': typeof CommunityRoute
   '/forest': typeof ForestRoute
-  '/learning': typeof LearningRoute
+  '/learning': typeof LearningRouteWithChildren
   '/projects': typeof ProjectsRoute
   '/teacher': typeof TeacherRouteWithChildren
   '/wellbeing': typeof WellbeingRoute
@@ -126,7 +144,10 @@ export interface FileRoutesByFullPath {
   '/teacher/analytics': typeof TeacherAnalyticsRoute
   '/teacher/classes': typeof TeacherClassesRouteWithChildren
   '/teacher/courses': typeof TeacherCoursesRouteWithChildren
+  '/teacher/projects': typeof TeacherProjectsRoute
+  '/learning/': typeof LearningIndexRoute
   '/teacher/': typeof TeacherIndexRoute
+  '/learning/$courseId/study': typeof LearningCourseIdStudyRoute
   '/teacher/classes/$classId': typeof TeacherClassesClassIdRoute
   '/teacher/courses/$courseId': typeof TeacherCoursesCourseIdRoute
   '/teacher/classes/': typeof TeacherClassesIndexRoute
@@ -137,12 +158,14 @@ export interface FileRoutesByTo {
   '/calendar': typeof CalendarRoute
   '/community': typeof CommunityRoute
   '/forest': typeof ForestRoute
-  '/learning': typeof LearningRoute
   '/projects': typeof ProjectsRoute
   '/wellbeing': typeof WellbeingRoute
   '/workspace': typeof WorkspaceRoute
   '/teacher/analytics': typeof TeacherAnalyticsRoute
+  '/teacher/projects': typeof TeacherProjectsRoute
+  '/learning': typeof LearningIndexRoute
   '/teacher': typeof TeacherIndexRoute
+  '/learning/$courseId/study': typeof LearningCourseIdStudyRoute
   '/teacher/classes/$classId': typeof TeacherClassesClassIdRoute
   '/teacher/courses/$courseId': typeof TeacherCoursesCourseIdRoute
   '/teacher/classes': typeof TeacherClassesIndexRoute
@@ -154,7 +177,7 @@ export interface FileRoutesById {
   '/calendar': typeof CalendarRoute
   '/community': typeof CommunityRoute
   '/forest': typeof ForestRoute
-  '/learning': typeof LearningRoute
+  '/learning': typeof LearningRouteWithChildren
   '/projects': typeof ProjectsRoute
   '/teacher': typeof TeacherRouteWithChildren
   '/wellbeing': typeof WellbeingRoute
@@ -162,7 +185,10 @@ export interface FileRoutesById {
   '/teacher/analytics': typeof TeacherAnalyticsRoute
   '/teacher/classes': typeof TeacherClassesRouteWithChildren
   '/teacher/courses': typeof TeacherCoursesRouteWithChildren
+  '/teacher/projects': typeof TeacherProjectsRoute
+  '/learning/': typeof LearningIndexRoute
   '/teacher/': typeof TeacherIndexRoute
+  '/learning/$courseId/study': typeof LearningCourseIdStudyRoute
   '/teacher/classes/$classId': typeof TeacherClassesClassIdRoute
   '/teacher/courses/$courseId': typeof TeacherCoursesCourseIdRoute
   '/teacher/classes/': typeof TeacherClassesIndexRoute
@@ -183,7 +209,10 @@ export interface FileRouteTypes {
     | '/teacher/analytics'
     | '/teacher/classes'
     | '/teacher/courses'
+    | '/teacher/projects'
+    | '/learning/'
     | '/teacher/'
+    | '/learning/$courseId/study'
     | '/teacher/classes/$classId'
     | '/teacher/courses/$courseId'
     | '/teacher/classes/'
@@ -194,12 +223,14 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/community'
     | '/forest'
-    | '/learning'
     | '/projects'
     | '/wellbeing'
     | '/workspace'
     | '/teacher/analytics'
+    | '/teacher/projects'
+    | '/learning'
     | '/teacher'
+    | '/learning/$courseId/study'
     | '/teacher/classes/$classId'
     | '/teacher/courses/$courseId'
     | '/teacher/classes'
@@ -218,7 +249,10 @@ export interface FileRouteTypes {
     | '/teacher/analytics'
     | '/teacher/classes'
     | '/teacher/courses'
+    | '/teacher/projects'
+    | '/learning/'
     | '/teacher/'
+    | '/learning/$courseId/study'
     | '/teacher/classes/$classId'
     | '/teacher/courses/$courseId'
     | '/teacher/classes/'
@@ -230,7 +264,7 @@ export interface RootRouteChildren {
   CalendarRoute: typeof CalendarRoute
   CommunityRoute: typeof CommunityRoute
   ForestRoute: typeof ForestRoute
-  LearningRoute: typeof LearningRoute
+  LearningRoute: typeof LearningRouteWithChildren
   ProjectsRoute: typeof ProjectsRoute
   TeacherRoute: typeof TeacherRouteWithChildren
   WellbeingRoute: typeof WellbeingRoute
@@ -309,6 +343,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TeacherIndexRouteImport
       parentRoute: typeof TeacherRoute
     }
+    '/learning/': {
+      id: '/learning/'
+      path: '/'
+      fullPath: '/learning/'
+      preLoaderRoute: typeof LearningIndexRouteImport
+      parentRoute: typeof LearningRoute
+    }
+    '/teacher/projects': {
+      id: '/teacher/projects'
+      path: '/projects'
+      fullPath: '/teacher/projects'
+      preLoaderRoute: typeof TeacherProjectsRouteImport
+      parentRoute: typeof TeacherRoute
+    }
     '/teacher/courses': {
       id: '/teacher/courses'
       path: '/courses'
@@ -358,8 +406,29 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TeacherClassesClassIdRouteImport
       parentRoute: typeof TeacherClassesRoute
     }
+    '/learning/$courseId/study': {
+      id: '/learning/$courseId/study'
+      path: '/$courseId/study'
+      fullPath: '/learning/$courseId/study'
+      preLoaderRoute: typeof LearningCourseIdStudyRouteImport
+      parentRoute: typeof LearningRoute
+    }
   }
 }
+
+interface LearningRouteChildren {
+  LearningIndexRoute: typeof LearningIndexRoute
+  LearningCourseIdStudyRoute: typeof LearningCourseIdStudyRoute
+}
+
+const LearningRouteChildren: LearningRouteChildren = {
+  LearningIndexRoute: LearningIndexRoute,
+  LearningCourseIdStudyRoute: LearningCourseIdStudyRoute,
+}
+
+const LearningRouteWithChildren = LearningRoute._addFileChildren(
+  LearningRouteChildren,
+)
 
 interface TeacherClassesRouteChildren {
   TeacherClassesClassIdRoute: typeof TeacherClassesClassIdRoute
@@ -393,6 +462,7 @@ interface TeacherRouteChildren {
   TeacherAnalyticsRoute: typeof TeacherAnalyticsRoute
   TeacherClassesRoute: typeof TeacherClassesRouteWithChildren
   TeacherCoursesRoute: typeof TeacherCoursesRouteWithChildren
+  TeacherProjectsRoute: typeof TeacherProjectsRoute
   TeacherIndexRoute: typeof TeacherIndexRoute
 }
 
@@ -400,6 +470,7 @@ const TeacherRouteChildren: TeacherRouteChildren = {
   TeacherAnalyticsRoute: TeacherAnalyticsRoute,
   TeacherClassesRoute: TeacherClassesRouteWithChildren,
   TeacherCoursesRoute: TeacherCoursesRouteWithChildren,
+  TeacherProjectsRoute: TeacherProjectsRoute,
   TeacherIndexRoute: TeacherIndexRoute,
 }
 
@@ -411,7 +482,7 @@ const rootRouteChildren: RootRouteChildren = {
   CalendarRoute: CalendarRoute,
   CommunityRoute: CommunityRoute,
   ForestRoute: ForestRoute,
-  LearningRoute: LearningRoute,
+  LearningRoute: LearningRouteWithChildren,
   ProjectsRoute: ProjectsRoute,
   TeacherRoute: TeacherRouteWithChildren,
   WellbeingRoute: WellbeingRoute,

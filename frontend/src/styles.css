@@ -524,6 +524,34 @@
     box-shadow: var(--shadow-card);
   }
 
+  /* Dashboard CTA — subtle pulsing ring */
+  @keyframes cta-attention-pulse {
+    0%,
+    100% {
+      transform: scale(1);
+      box-shadow:
+        0 0 0 0 oklch(0.88 0.14 95 / 0.55),
+        0 4px 12px oklch(0.45 0.1 160 / 0.18);
+    }
+    50% {
+      transform: scale(1.05);
+      box-shadow:
+        0 0 0 6px oklch(0.88 0.14 95 / 0),
+        0 0 16px oklch(0.82 0.16 145 / 0.4);
+    }
+  }
+
+  .cta-attention {
+    animation: cta-attention-pulse 1.8s ease-in-out infinite;
+    will-change: transform, box-shadow;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cta-attention {
+      animation: none;
+    }
+  }
+
   /* Tier rank badges — faux-3D pedestal + depth stack */
   .tier-badge-shell {
     position: relative;
