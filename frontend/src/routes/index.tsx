@@ -326,14 +326,13 @@ function NextActionCard() {
       </div>
       <div className="relative">
         <div className="text-xs uppercase tracking-widest opacity-70 font-semibold mb-2">
-          AI Recommendation
+          .
         </div>
         <h2 className="font-display text-2xl lg:text-3xl font-bold leading-tight">
           Review{" "}
           <span className="underline decoration-primary-foreground/40 decoration-2 underline-offset-4">
-            Python · cours-python, chap1-Python_OOP
+            chap1-Python_OOP
           </span>{" "}
-          for 25 min
         </h2>
         <p className="opacity-85 text-sm mt-3 max-w-md">
           A quick pass through your Python readings before you practice keeps the next session sharp.
@@ -349,10 +348,10 @@ function NextActionCard() {
           <button className="rounded-xl bg-primary-foreground/15 px-4 py-2.5 text-sm font-medium hover:bg-primary-foreground/25 transition">
             Explain why
           </button>
-          <div className="ml-auto flex items-center gap-1.5 text-xs opacity-80">
+          {/* <div className="ml-auto flex items-center gap-1.5 text-xs opacity-80">
             <Zap className="h-3.5 w-3.5" />
             ~ 0.04 kWh
-          </div>
+          </div> */}
         </div>
       </div>
     </Card>
@@ -369,7 +368,7 @@ function EcoForestCard() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <Trees className="h-4 w-4 text-primary" />
-            Eco Forest
+            My Forest
           </div>
           <span className="text-xs rounded-full bg-card/70 px-2 py-1 font-semibold">
             🔥 4-day streak

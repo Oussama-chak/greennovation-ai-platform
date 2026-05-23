@@ -1,15 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppLayout } from "@/components/AppLayout";
-import { PageHeader } from "@/components/PageHeader";
 import { AvatarTip } from "@/components/AvatarTip";
 import { PENDING_REWARD_KEY } from "@/components/DailyReward";
-import { Fragment, useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Trees, Flame, Leaf, Award, Sprout, Sparkles, Gift } from "lucide-react";
 import treeOak from "@/assets/tree-oak.png";
 import treePine from "@/assets/tree-pine.png";
 import treeBlossom from "@/assets/tree-blossom.png";
 import treeBamboo from "@/assets/tree-bamboo.png";
-import treeSapling from "@/assets/tree-sapling.png";
 import { useTreeInventory } from "@/hooks/useTreeInventory";
 import { useForest, useForestInventory, usePlantTree } from "@/hooks/useForest";
 import { consumeTree } from "@/lib/treeInventory";
@@ -39,11 +37,10 @@ export const Route = createFileRoute("/forest")({
   ),
 });
 
-type TreeKind = "oak" | "pine" | "blossom" | "bamboo" | "sapling";
+type TreeKind = "oak" | "pine" | "blossom" | "bamboo";
 type Tree = {
   id: number;
   kind: TreeKind;
-  // percentages within the forest scene (0-100)
   x: number;
   y: number;
   scale: number;
@@ -56,61 +53,41 @@ const TREE_IMG: Record<TreeKind, string> = {
   pine: treePine,
   blossom: treeBlossom,
   bamboo: treeBamboo,
-  sapling: treeSapling,
 };
 
-const TREE_KINDS: TreeKind[] = ["oak", "pine", "blossom", "bamboo", "sapling"];
+const PLANT_KINDS: TreeKind[] = ["oak", "pine", "blossom", "bamboo"];
 
-// Seeded RNG so the random forest stays stable across renders
-function mulberry32(seed: number) {
-  return function () {
-    let t = (seed += 0x6d2b79f5);
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+function pickKind(): TreeKind {
+  return PLANT_KINDS[Math.floor(Math.random() * PLANT_KINDS.length)];
 }
 
-// Pre-planted trees scattered randomly to look like a real forest using all models.
-const INITIAL_TREES: Tree[] = (() => {
-  const rand = mulberry32(42);
-  const trees: Tree[] = [];
-  // Back row — small, distant
-  const backCount = 5;
-  for (let i = 0; i < backCount; i++) {
-    const kind = TREE_KINDS[Math.floor(rand() * TREE_KINDS.length)];
-    trees.push({
-      id: 100 + i,
-      kind,
-      x: (i / (backCount - 1)) * 92 + 4 + (rand() - 0.5) * 4,
-      y: 46 + rand() * 8,
-      scale: 0.45 + rand() * 0.18,
-    });
-  }
-  // Front row — larger, closer
-  const frontCount = 5;
-  for (let i = 0; i < frontCount; i++) {
-    const kind = TREE_KINDS[Math.floor(rand() * TREE_KINDS.length)];
-    trees.push({
-      id: 200 + i,
-      kind,
-      x: (i / (frontCount - 1)) * 88 + 6 + (rand() - 0.5) * 6,
-      y: 72 + rand() * 12,
-      scale: 0.7 + rand() * 0.22,
-    });
-  }
-  return trees;
-})();
+function asTreeKind(kind: string): TreeKind {
+  return PLANT_KINDS.includes(kind as TreeKind) ? (kind as TreeKind) : "oak";
+}
+
+// Pre-planted trees scattered to look like a real forest (back → front).
+const INITIAL_TREES: Tree[] = [
+  { id: 1, kind: "oak", x: 10, y: 50, scale: 0.55 },
+  { id: 2, kind: "blossom", x: 24, y: 48, scale: 0.58 },
+  { id: 3, kind: "pine", x: 38, y: 51, scale: 0.6 },
+  { id: 4, kind: "oak", x: 52, y: 49, scale: 0.56 },
+  { id: 5, kind: "pine", x: 66, y: 50, scale: 0.58 },
+  { id: 6, kind: "blossom", x: 80, y: 48, scale: 0.56 },
+  { id: 7, kind: "oak", x: 92, y: 51, scale: 0.55 },
+  { id: 8, kind: "blossom", x: 14, y: 76, scale: 0.78 },
+  { id: 9, kind: "pine", x: 32, y: 80, scale: 0.82 },
+  { id: 10, kind: "oak", x: 50, y: 78, scale: 0.85 },
+  { id: 11, kind: "blossom", x: 68, y: 80, scale: 0.78 },
+  { id: 12, kind: "pine", x: 86, y: 76, scale: 0.8 },
+];
 
 function ForestPage() {
   const { reward } = Route.useSearch();
-  // Both localStorage and backend
   const { count: localAvailable } = useTreeInventory();
   const { data: backendForest, isLoading: forestLoading } = useForest();
   const { data: backendInventory } = useForestInventory();
   const { mutate: plantViaBackend, isPending: backendPlanting } = usePlantTree();
 
-  // Use backend inventory if available, otherwise fall back to localStorage
   const available = backendInventory?.available ?? localAvailable;
   const backendTrees = backendForest?.trees ?? [];
 
@@ -120,19 +97,16 @@ function ForestPage() {
   const claimedRef = useRef(false);
   const sceneRef = useRef<HTMLElement | null>(null);
 
-  // Initialize trees from backend when loaded
   useEffect(() => {
     if (!forestLoading && backendTrees.length > 0) {
-      // Convert backend trees to frontend format, keep initial trees as base
       const convertedTrees: Tree[] = backendTrees.map((t) => ({
-        id: parseInt(t.id.slice(0, 10)) || Math.random() * 10000, // Generate numeric ID from UUID
-        kind: t.kind,
+        id: parseInt(t.id.slice(0, 10), 10) || Date.now() + Math.random(),
+        kind: asTreeKind(t.kind),
         x: t.x,
         y: t.y,
         scale: t.scale,
         growing: false,
       }));
-      // Combine with initial trees (they stay as background)
       setTrees(INITIAL_TREES.concat(convertedTrees));
     }
   }, [forestLoading, backendTrees]);
@@ -151,37 +125,29 @@ function ForestPage() {
       color: "bg-warning/15 text-warning-foreground",
     },
     { icon: Flame, label: "Streak", value: "4 days", color: "bg-accent text-accent-foreground" },
-    {
-      icon: Leaf,
-      label: "CO₂ saved (sim.)",
-      value: `${(trees.length * 0.2).toFixed(1)} kg`,
-      color: "bg-success/10 text-success",
-    },
     { icon: Award, label: "Level", value: "Sprout · 3", color: "bg-info/10 text-info" },
   ];
 
-  const plantTreeAt = useCallback((x: number, y: number, treekind: TreeKind) => {
+  const plantTreeAt = useCallback((x: number, y: number, treekind?: TreeKind) => {
+    const kind = treekind ?? pickKind();
     const scale = 0.7 + Math.random() * 0.2;
     const newTree: Tree = {
       id: Date.now(),
-      kind: treekind,
+      kind,
       x,
       y,
       scale,
       growing: true,
-      isBamboo: treekind === "bamboo",
+      isBamboo: kind === "bamboo",
     };
     setGrowSpot({ x, y });
     setTrees((t) => [...t, newTree]);
-    // Smoothly bring the planting spot into view
     if (typeof window !== "undefined") {
       requestAnimationFrame(() => {
         sceneRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       });
     }
-    // remove ground pulse after it plays
     setTimeout(() => setGrowSpot(null), 1800);
-    // mark tree as no-longer-growing after the long grow animation
     setTimeout(() => {
       setTrees((t) => t.map((tr) => (tr.id === newTree.id ? { ...tr, growing: false } : tr)));
       setPlanting(false);
@@ -194,23 +160,18 @@ function ForestPage() {
 
     const x = 8 + Math.random() * 84;
     const y = 60 + Math.random() * 28;
-    const kind = TREE_KINDS[Math.floor(Math.random() * TREE_KINDS.length)];
-
+    const kind = pickKind();
     setPlanting(true);
 
-    // Try backend first, then fall back to localStorage
     if (backendInventory) {
-      // Backend available: send to backend
       plantViaBackend(
         { kind, x, y, scale: 0.7 + Math.random() * 0.2 },
         {
           onSuccess: () => {
-            // Also consume from localStorage to keep in sync
             consumeTree();
             plantTreeAt(x, y, kind);
           },
           onError: () => {
-            // Fallback to localStorage if backend fails
             if (consumeTree()) {
               plantTreeAt(x, y, kind);
             } else {
@@ -219,17 +180,13 @@ function ForestPage() {
           },
         },
       );
+    } else if (consumeTree()) {
+      plantTreeAt(x, y, kind);
     } else {
-      // Backend not available: use localStorage only
-      if (consumeTree()) {
-        plantTreeAt(x, y, kind);
-      } else {
-        setPlanting(false);
-      }
+      setPlanting(false);
     }
   }, [planting, backendPlanting, available, backendInventory, plantViaBackend, plantTreeAt]);
 
-  // Auto-plant the daily reward tree on arrival (when navigated with ?reward=1)
   useEffect(() => {
     if (claimedRef.current) return;
     if (typeof window === "undefined") return;
@@ -240,9 +197,8 @@ function ForestPage() {
 
       const x = 20 + Math.random() * 60;
       const y = 64 + Math.random() * 22;
-      const kind = TREE_KINDS[Math.floor(Math.random() * TREE_KINDS.length)];
+      const kind = pickKind();
 
-      // Try backend first
       if (backendInventory) {
         plantViaBackend(
           { kind, x, y, scale: 0.7 + Math.random() * 0.2 },
@@ -250,27 +206,19 @@ function ForestPage() {
             onSuccess: () => {
               consumeTree();
               setPlanting(true);
-              setTimeout(() => {
-                plantTreeAt(x, y, kind);
-              }, 700);
+              setTimeout(() => plantTreeAt(x, y, kind), 700);
             },
             onError: () => {
               if (consumeTree()) {
                 setPlanting(true);
-                setTimeout(() => {
-                  plantTreeAt(x, y, kind);
-                }, 700);
+                setTimeout(() => plantTreeAt(x, y, kind), 700);
               }
             },
           },
         );
-      } else {
-        if (consumeTree()) {
-          setPlanting(true);
-          setTimeout(() => {
-            plantTreeAt(x, y, kind);
-          }, 700);
-        }
+      } else if (consumeTree()) {
+        setPlanting(true);
+        setTimeout(() => plantTreeAt(x, y, kind), 700);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -286,32 +234,45 @@ function ForestPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <PageHeader
-        eyebrow="Eco Forest"
-        title="Your forest is thriving 🌳"
-        description="Earn trees by studying daily and completing projects. Each one you plant grows here forever."
-        actions={
-          <div className="relative group">
-            <button
-              onClick={plantTree}
-              disabled={!canPlant}
-              className="inline-flex items-center gap-2 rounded-xl gradient-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold shadow-glow hover:opacity-95 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Sprout className="h-4 w-4" />
-              {buttonLabel}
-            </button>
-            {available <= 0 && !planting && (
-              <span className="pointer-events-none absolute right-0 top-full mt-2 rounded-lg bg-foreground text-background text-[11px] font-semibold px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition shadow-card whitespace-nowrap">
-                No trees available — earn one by studying or completing a project
-              </span>
-            )}
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8 animate-[fade-in-up_0.5s_ease-out]">
+        <div>
+          <div className="text-xs uppercase tracking-[0.2em] text-primary font-semibold mb-2">
+            Eco Forest
           </div>
-        }
-      />
+          <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight leading-snug">
+            Trees are planted one seed at a time;
+            <br className="hidden sm:block" />
+            <span className="bg-gradient-to-r from-primary to-success bg-clip-text text-transparent">
+              {" "}
+              success is built one step at a time.
+            </span>
+          </h1>
+          <p className="text-muted-foreground mt-3 max-w-xl text-sm sm:text-base">
+            Earn trees by studying daily and completing projects. Each one you plant grows here
+            forever.
+          </p>
+        </div>
+        <div className="relative group shrink-0">
+          <button
+            type="button"
+            onClick={plantTree}
+            disabled={!canPlant}
+            className="inline-flex items-center gap-2 rounded-xl gradient-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold hover:opacity-95 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Sprout className="h-4 w-4" />
+            {buttonLabel}
+          </button>
+          {available <= 0 && !planting && (
+            <span className="pointer-events-none absolute right-0 top-full mt-2 rounded-lg bg-foreground text-background text-[11px] font-semibold px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition whitespace-nowrap">
+              No trees available — earn one by studying or completing a project
+            </span>
+          )}
+        </div>
+      </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {stats.map((s) => (
-          <div key={s.label} className="rounded-2xl bg-card border border-border p-4 shadow-card">
+          <div key={s.label} className="rounded-2xl bg-card border border-border p-4">
             <div className={`h-10 w-10 rounded-xl grid place-items-center ${s.color}`}>
               <s.icon className="h-5 w-5" />
             </div>
@@ -321,12 +282,10 @@ function ForestPage() {
         ))}
       </div>
 
-      {/* The forest scene */}
       <section
         ref={sceneRef}
-        className="rounded-3xl shadow-card relative overflow-hidden border border-primary/10"
+        className="rounded-3xl relative overflow-hidden border border-primary/10"
       >
-        {/* Sky → ground gradient */}
         <div
           className="relative w-full"
           style={{
@@ -335,202 +294,168 @@ function ForestPage() {
               "linear-gradient(to bottom, oklch(0.92 0.06 230) 0%, oklch(0.95 0.05 200) 35%, oklch(0.88 0.10 145) 55%, oklch(0.78 0.13 140) 80%, oklch(0.70 0.14 145) 100%)",
           }}
         >
-          {/* Background scene layer — isolated stacking context so trees never
-              escape above UI overlays in the parent. */}
           <div
-            className="absolute inset-0"
-            style={{ isolation: "isolate", zIndex: 0 }}
-            aria-hidden="true"
+            className="absolute h-20 w-20 rounded-full"
+            style={{
+              top: "8%",
+              right: "10%",
+              background:
+                "radial-gradient(circle, oklch(0.95 0.14 90) 0%, oklch(0.92 0.12 80 / 0.4) 60%, transparent 100%)",
+            }}
+          />
+
+          <svg
+            className="absolute inset-x-0 top-[18%] w-full"
+            viewBox="0 0 1000 120"
+            preserveAspectRatio="none"
+            style={{ height: "12%" }}
+            aria-hidden
           >
-            {/* Sun */}
-            <div
-              className="absolute h-20 w-20 rounded-full"
-              style={{
-                top: "8%",
-                right: "10%",
-                background:
-                  "radial-gradient(circle, oklch(0.95 0.14 90) 0%, oklch(0.92 0.12 80 / 0.4) 60%, transparent 100%)",
-                filter: "blur(2px)",
-              }}
+            <path
+              d="M0,120 L0,70 L120,30 L220,80 L340,20 L460,70 L580,30 L720,80 L860,40 L1000,70 L1000,120 Z"
+              fill="oklch(0.78 0.06 200 / 0.55)"
             />
-            {/* Distant mountains */}
-            <svg
-              className="absolute inset-x-0 top-[18%] w-full"
-              viewBox="0 0 1000 120"
-              preserveAspectRatio="none"
-              style={{ height: "12%" }}
-            >
-              <path
-                d="M0,120 L0,70 L120,30 L220,80 L340,20 L460,70 L580,30 L720,80 L860,40 L1000,70 L1000,120 Z"
-                fill="oklch(0.78 0.06 200 / 0.55)"
-              />
-              <path
-                d="M0,120 L0,90 L160,55 L300,90 L440,50 L600,90 L760,60 L900,90 L1000,80 L1000,120 Z"
-                fill="oklch(0.70 0.07 180 / 0.65)"
-              />
-            </svg>
+            <path
+              d="M0,120 L0,90 L160,55 L300,90 L440,50 L600,90 L760,60 L900,90 L1000,80 L1000,120 Z"
+              fill="oklch(0.70 0.07 180 / 0.65)"
+            />
+          </svg>
 
-            {/* Ground hills */}
-            <svg
-              className="absolute inset-x-0 bottom-0 w-full"
-              viewBox="0 0 1000 220"
-              preserveAspectRatio="none"
-              style={{ height: "55%" }}
-            >
-              <path
-                d="M0,220 L0,80 Q250,20 500,70 T1000,60 L1000,220 Z"
-                fill="oklch(0.82 0.12 145)"
-              />
-              <path
-                d="M0,220 L0,140 Q300,90 600,130 T1000,120 L1000,220 Z"
-                fill="oklch(0.74 0.14 145)"
-              />
-              <path
-                d="M0,220 L0,180 Q350,150 700,175 T1000,170 L1000,220 Z"
-                fill="oklch(0.66 0.15 145)"
-              />
-            </svg>
+          <svg
+            className="absolute inset-x-0 bottom-0 w-full"
+            viewBox="0 0 1000 220"
+            preserveAspectRatio="none"
+            style={{ height: "55%" }}
+            aria-hidden
+          >
+            <path
+              d="M0,220 L0,80 Q250,20 500,70 T1000,60 L1000,220 Z"
+              fill="oklch(0.82 0.12 145)"
+            />
+            <path
+              d="M0,220 L0,140 Q300,90 600,130 T1000,120 L1000,220 Z"
+              fill="oklch(0.74 0.14 145)"
+            />
+            <path
+              d="M0,220 L0,180 Q350,150 700,175 T1000,170 L1000,220 Z"
+              fill="oklch(0.66 0.15 145)"
+            />
+          </svg>
 
-            {/* Floating leaves ambience */}
-            {[0, 1, 2, 3].map((i) => (
+          {[0, 1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="absolute text-2xl pointer-events-none animate-[leaf-fall_6s_ease-in-out_infinite]"
+              style={{
+                left: `${15 + i * 22}%`,
+                top: 0,
+                animationDelay: `${i * 1.4}s`,
+              }}
+            >
+              🍃
+            </div>
+          ))}
+
+          {growSpot && (
+            <>
               <div
-                key={i}
-                className="absolute text-2xl pointer-events-none animate-[leaf-fall_6s_ease-in-out_infinite]"
+                className="absolute pointer-events-none rounded-full"
                 style={{
-                  left: `${15 + i * 22}%`,
-                  top: 0,
-                  animationDelay: `${i * 1.4}s`,
+                  left: `${growSpot.x}%`,
+                  top: `${growSpot.y}%`,
+                  width: 130,
+                  height: 130,
+                  background:
+                    "radial-gradient(circle, oklch(0.95 0.18 90 / 0.8) 0%, oklch(0.85 0.18 145 / 0.5) 45%, transparent 80%)",
+                  animation: "ground-pulse 1.8s ease-out forwards",
+                  zIndex: 1,
+                  transform: "translate(-50%, -50%)",
                 }}
-              >
-                🍃
-              </div>
-            ))}
-
-            {/* Ground pulse + rising particles where the new tree is sprouting */}
-            {growSpot && (
-              <>
-                <div
-                  className="absolute pointer-events-none rounded-full"
-                  style={{
-                    left: `${growSpot.x}%`,
-                    top: `${growSpot.y}%`,
-                    width: 130,
-                    height: 130,
-                    background:
-                      "radial-gradient(circle, oklch(0.95 0.18 90 / 0.8) 0%, oklch(0.85 0.18 145 / 0.5) 45%, transparent 80%)",
-                    animation: "ground-pulse 1.8s ease-out forwards",
-                    zIndex: 1,
-                    transform: "translate(-50%, -50%)",
-                  }}
-                />
-                {/* Rising sparkle particles */}
-                {Array.from({ length: 12 }).map((_, i) => {
-                  const drift = (i % 2 === 0 ? 1 : -1) * (8 + ((i * 7) % 28));
-                  const delay = (i * 0.12).toFixed(2);
-                  const dur = (1.8 + (i % 4) * 0.35).toFixed(2);
-                  return (
-                    <div
-                      key={`p-${i}`}
-                      className="absolute pointer-events-none"
-                      style={{
-                        left: `calc(${growSpot.x}% + ${(i - 6) * 6}px)`,
-                        top: `${growSpot.y}%`,
-                        width: 8,
-                        height: 8,
-                        borderRadius: "9999px",
-                        background:
-                          "radial-gradient(circle, oklch(0.95 0.16 145 / 0.95) 0%, oklch(0.88 0.18 90 / 0.6) 60%, transparent 100%)",
-                        ["--px" as string]: `${drift}px`,
-                        animation: `particle-float ${dur}s ease-out ${delay}s forwards`,
-                        zIndex: 90,
-                      }}
-                    />
-                  );
-                })}
-                {/* Floating leaves */}
-                {Array.from({ length: 5 }).map((_, i) => {
-                  const drift = (i % 2 === 0 ? 1 : -1) * (14 + i * 6);
-                  const delay = (0.3 + i * 0.18).toFixed(2);
-                  return (
-                    <div
-                      key={`l-${i}`}
-                      className="absolute pointer-events-none text-base"
-                      style={{
-                        left: `calc(${growSpot.x}% + ${(i - 2) * 10}px)`,
-                        top: `calc(${growSpot.y}% - 6px)`,
-                        ["--px" as string]: `${drift}px`,
-                        animation: `particle-float ${2.6 + (i % 3) * 0.4}s ease-out ${delay}s forwards`,
-                        opacity: 0.85,
-                        zIndex: 91,
-                      }}
-                    >
-                      🍃
-                    </div>
-                  );
-                })}
-              </>
-            )}
-
-            {/* Trees — depth-sorted via internal z-index, isolated from UI */}
-            {trees.map((t) => {
-              const idleAnim = !t.growing
-                ? `leaf-sway ${4 + (t.id % 5) * 0.5}s ease-in-out ${(t.id % 7) * 0.3}s infinite`
-                : undefined;
-              const growAnim = t.growing
-                ? t.isBamboo
-                  ? `bamboo-grow 2.3s cubic-bezier(0.34, 1.2, 0.64, 1) forwards`
-                  : `tree-grow 2.4s cubic-bezier(0.34, 1.2, 0.64, 1) forwards`
-                : undefined;
-              return (
-                <Fragment key={t.id}>
-                  {/* Soft ground shadow under each tree */}
+              />
+              {Array.from({ length: 12 }).map((_, i) => {
+                const drift = (i % 2 === 0 ? 1 : -1) * (8 + ((i * 7) % 28));
+                const delay = (i * 0.12).toFixed(2);
+                const dur = (1.8 + (i % 4) * 0.35).toFixed(2);
+                return (
                   <div
-                    className="absolute pointer-events-none rounded-[50%]"
+                    key={`p-${i}`}
+                    className="absolute pointer-events-none"
                     style={{
-                      left: `${t.x}%`,
-                      top: `${t.y}%`,
-                      width: 80 * t.scale,
-                      height: 14 * t.scale,
+                      left: `calc(${growSpot.x}% + ${(i - 6) * 6}px)`,
+                      top: `${growSpot.y}%`,
+                      width: 8,
+                      height: 8,
+                      borderRadius: "9999px",
                       background:
-                        "radial-gradient(ellipse at center, oklch(0.25 0.04 165 / 0.45) 0%, transparent 70%)",
-                      transform: "translate(-50%, -50%)",
-                      filter: "blur(2px)",
-                      zIndex: Math.round(t.y) - 1,
-                      animation: t.growing ? "tree-shadow-in 1.6s ease-out forwards" : undefined,
-                      opacity: t.growing ? undefined : 0.35,
+                        "radial-gradient(circle, oklch(0.95 0.16 145 / 0.95) 0%, oklch(0.88 0.18 90 / 0.6) 60%, transparent 100%)",
+                      ["--px" as string]: `${drift}px`,
+                      animation: `particle-float ${dur}s ease-out ${delay}s forwards`,
+                      zIndex: 90,
                     }}
                   />
-                  <img
-                    src={TREE_IMG[t.kind]}
-                    alt={`${t.kind} tree`}
-                    className="absolute pointer-events-none drop-shadow-lg"
+                );
+              })}
+              {Array.from({ length: 5 }).map((_, i) => {
+                const drift = (i % 2 === 0 ? 1 : -1) * (14 + i * 6);
+                const delay = (0.3 + i * 0.18).toFixed(2);
+                return (
+                  <div
+                    key={`l-${i}`}
+                    className="absolute pointer-events-none text-base"
                     style={{
-                      left: `${t.x}%`,
-                      top: `${t.y}%`,
-                      transform: `translate(-50%, -100%) scale(${t.scale})`,
-                      transformOrigin: "bottom center",
-                      width: 130,
-                      height: 130,
-                      zIndex: Math.round(t.y),
-                      animation: growAnim ?? idleAnim,
+                      left: `calc(${growSpot.x}% + ${(i - 2) * 10}px)`,
+                      top: `calc(${growSpot.y}% - 6px)`,
+                      ["--px" as string]: `${drift}px`,
+                      animation: `particle-float ${2.6 + (i % 3) * 0.4}s ease-out ${delay}s forwards`,
+                      opacity: 0.85,
+                      zIndex: 91,
                     }}
-                    loading="lazy"
-                  />
-                </Fragment>
-              );
-            })}
-          </div>
+                  >
+                    🍃
+                  </div>
+                );
+              })}
+            </>
+          )}
 
-          {/* Header overlay — sits in the section's stacking context, always
-              above the isolated background scene layer below. */}
-          <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
-            <div className="rounded-2xl bg-card/80 backdrop-blur px-3 py-1.5 shadow-card">
+          {trees.map((t) => {
+            const idleAnim = !t.growing
+              ? `leaf-sway ${4 + (t.id % 5) * 0.5}s ease-in-out ${(t.id % 7) * 0.3}s infinite`
+              : undefined;
+            const growAnim = t.growing
+              ? t.isBamboo
+                ? `bamboo-grow 2.3s cubic-bezier(0.34, 1.2, 0.64, 1) forwards`
+                : `tree-grow 2.4s cubic-bezier(0.34, 1.2, 0.64, 1) forwards`
+              : undefined;
+            return (
+              <img
+                key={t.id}
+                src={TREE_IMG[t.kind]}
+                alt={`${t.kind} tree`}
+                className="absolute pointer-events-none"
+                style={{
+                  left: `${t.x}%`,
+                  top: `${t.y}%`,
+                  transform: `translate(-50%, -100%) scale(${t.scale})`,
+                  transformOrigin: "bottom center",
+                  width: 130,
+                  height: 130,
+                  zIndex: Math.round(t.y),
+                  animation: growAnim ?? idleAnim,
+                }}
+                loading="lazy"
+              />
+            );
+          })}
+
+          <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-50">
+            <div className="rounded-2xl bg-card/80 px-3 py-1.5 border border-border/40">
               <div className="text-[10px] uppercase tracking-widest font-bold text-primary">
                 Spring grove · 2025
               </div>
               <div className="text-xs font-semibold">{trees.length} trees thriving</div>
             </div>
-            <span className="rounded-full bg-card/80 backdrop-blur px-3 py-1.5 text-xs font-semibold shadow-card inline-flex items-center gap-1.5">
+            <span className="rounded-full bg-card/80 px-3 py-1.5 text-xs font-semibold border border-border/40 inline-flex items-center gap-1.5">
               <Sparkles className="h-3 w-3 text-primary" /> Bamboo specialty 🎋
             </span>
           </div>

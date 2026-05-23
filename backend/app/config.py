@@ -16,4 +16,7 @@ def repo_root() -> Path:
 def bootstrap() -> None:
     root = repo_root()
     os.environ.setdefault("GREENNOVATION_DATA_DIR", str(root / "data"))
+    # Avoid importing TensorFlow via transformers (PyTorch-only stack; prevents protobuf/tf clashes).
+    os.environ.setdefault("TRANSFORMERS_NO_TF", "1")
+    os.environ.setdefault("USE_TF", "0")
     load_dotenv(root / ".env")

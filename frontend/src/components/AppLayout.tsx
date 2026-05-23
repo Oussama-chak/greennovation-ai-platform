@@ -14,6 +14,7 @@ import {
   X,
   Zap,
   Users,
+  CalendarDays,
 } from "lucide-react";
 import { DailyReward } from "@/components/DailyReward";
 import { FloatingBamboo } from "@/components/FloatingBamboo";
@@ -24,7 +25,6 @@ import {
   BreathingBreakIconButton,
 } from "@/components/BreathingBreak";
 import { BreathingBreakProvider } from "@/context/BreathingBreakContext";
-import { CalendarDays } from "lucide-react";
 
 const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
