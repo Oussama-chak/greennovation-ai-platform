@@ -11,11 +11,21 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WorkspaceRouteImport } from './routes/workspace'
 import { Route as WellbeingRouteImport } from './routes/wellbeing'
+import { Route as TeacherRouteImport } from './routes/teacher'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as LearningRouteImport } from './routes/learning'
 import { Route as ForestRouteImport } from './routes/forest'
+import { Route as CommunityRouteImport } from './routes/community'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as TeacherIndexRouteImport } from './routes/teacher.index'
+import { Route as TeacherCoursesRouteImport } from './routes/teacher.courses'
+import { Route as TeacherClassesRouteImport } from './routes/teacher.classes'
+import { Route as TeacherAnalyticsRouteImport } from './routes/teacher.analytics'
+import { Route as TeacherCoursesIndexRouteImport } from './routes/teacher.courses.index'
+import { Route as TeacherClassesIndexRouteImport } from './routes/teacher.classes.index'
+import { Route as TeacherCoursesCourseIdRouteImport } from './routes/teacher.courses.$courseId'
+import { Route as TeacherClassesClassIdRouteImport } from './routes/teacher.classes.$classId'
 
 const WorkspaceRoute = WorkspaceRouteImport.update({
   id: '/workspace',
@@ -25,6 +35,11 @@ const WorkspaceRoute = WorkspaceRouteImport.update({
 const WellbeingRoute = WellbeingRouteImport.update({
   id: '/wellbeing',
   path: '/wellbeing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TeacherRoute = TeacherRouteImport.update({
+  id: '/teacher',
+  path: '/teacher',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjectsRoute = ProjectsRouteImport.update({
@@ -42,6 +57,11 @@ const ForestRoute = ForestRouteImport.update({
   path: '/forest',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CommunityRoute = CommunityRouteImport.update({
+  id: '/community',
+  path: '/community',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CalendarRoute = CalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
@@ -52,71 +72,167 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TeacherIndexRoute = TeacherIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => TeacherRoute,
+} as any)
+const TeacherCoursesRoute = TeacherCoursesRouteImport.update({
+  id: '/courses',
+  path: '/courses',
+  getParentRoute: () => TeacherRoute,
+} as any)
+const TeacherClassesRoute = TeacherClassesRouteImport.update({
+  id: '/classes',
+  path: '/classes',
+  getParentRoute: () => TeacherRoute,
+} as any)
+const TeacherAnalyticsRoute = TeacherAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => TeacherRoute,
+} as any)
+const TeacherCoursesIndexRoute = TeacherCoursesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => TeacherCoursesRoute,
+} as any)
+const TeacherClassesIndexRoute = TeacherClassesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => TeacherClassesRoute,
+} as any)
+const TeacherCoursesCourseIdRoute = TeacherCoursesCourseIdRouteImport.update({
+  id: '/$courseId',
+  path: '/$courseId',
+  getParentRoute: () => TeacherCoursesRoute,
+} as any)
+const TeacherClassesClassIdRoute = TeacherClassesClassIdRouteImport.update({
+  id: '/$classId',
+  path: '/$classId',
+  getParentRoute: () => TeacherClassesRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
+  '/community': typeof CommunityRoute
   '/forest': typeof ForestRoute
   '/learning': typeof LearningRoute
   '/projects': typeof ProjectsRoute
+  '/teacher': typeof TeacherRouteWithChildren
   '/wellbeing': typeof WellbeingRoute
   '/workspace': typeof WorkspaceRoute
+  '/teacher/analytics': typeof TeacherAnalyticsRoute
+  '/teacher/classes': typeof TeacherClassesRouteWithChildren
+  '/teacher/courses': typeof TeacherCoursesRouteWithChildren
+  '/teacher/': typeof TeacherIndexRoute
+  '/teacher/classes/$classId': typeof TeacherClassesClassIdRoute
+  '/teacher/courses/$courseId': typeof TeacherCoursesCourseIdRoute
+  '/teacher/classes/': typeof TeacherClassesIndexRoute
+  '/teacher/courses/': typeof TeacherCoursesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
+  '/community': typeof CommunityRoute
   '/forest': typeof ForestRoute
   '/learning': typeof LearningRoute
   '/projects': typeof ProjectsRoute
   '/wellbeing': typeof WellbeingRoute
   '/workspace': typeof WorkspaceRoute
+  '/teacher/analytics': typeof TeacherAnalyticsRoute
+  '/teacher': typeof TeacherIndexRoute
+  '/teacher/classes/$classId': typeof TeacherClassesClassIdRoute
+  '/teacher/courses/$courseId': typeof TeacherCoursesCourseIdRoute
+  '/teacher/classes': typeof TeacherClassesIndexRoute
+  '/teacher/courses': typeof TeacherCoursesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
+  '/community': typeof CommunityRoute
   '/forest': typeof ForestRoute
   '/learning': typeof LearningRoute
   '/projects': typeof ProjectsRoute
+  '/teacher': typeof TeacherRouteWithChildren
   '/wellbeing': typeof WellbeingRoute
   '/workspace': typeof WorkspaceRoute
+  '/teacher/analytics': typeof TeacherAnalyticsRoute
+  '/teacher/classes': typeof TeacherClassesRouteWithChildren
+  '/teacher/courses': typeof TeacherCoursesRouteWithChildren
+  '/teacher/': typeof TeacherIndexRoute
+  '/teacher/classes/$classId': typeof TeacherClassesClassIdRoute
+  '/teacher/courses/$courseId': typeof TeacherCoursesCourseIdRoute
+  '/teacher/classes/': typeof TeacherClassesIndexRoute
+  '/teacher/courses/': typeof TeacherCoursesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/calendar'
+    | '/community'
     | '/forest'
     | '/learning'
     | '/projects'
+    | '/teacher'
     | '/wellbeing'
     | '/workspace'
+    | '/teacher/analytics'
+    | '/teacher/classes'
+    | '/teacher/courses'
+    | '/teacher/'
+    | '/teacher/classes/$classId'
+    | '/teacher/courses/$courseId'
+    | '/teacher/classes/'
+    | '/teacher/courses/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/calendar'
+    | '/community'
     | '/forest'
     | '/learning'
     | '/projects'
     | '/wellbeing'
     | '/workspace'
+    | '/teacher/analytics'
+    | '/teacher'
+    | '/teacher/classes/$classId'
+    | '/teacher/courses/$courseId'
+    | '/teacher/classes'
+    | '/teacher/courses'
   id:
     | '__root__'
     | '/'
     | '/calendar'
+    | '/community'
     | '/forest'
     | '/learning'
     | '/projects'
+    | '/teacher'
     | '/wellbeing'
     | '/workspace'
+    | '/teacher/analytics'
+    | '/teacher/classes'
+    | '/teacher/courses'
+    | '/teacher/'
+    | '/teacher/classes/$classId'
+    | '/teacher/courses/$courseId'
+    | '/teacher/classes/'
+    | '/teacher/courses/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CalendarRoute: typeof CalendarRoute
+  CommunityRoute: typeof CommunityRoute
   ForestRoute: typeof ForestRoute
   LearningRoute: typeof LearningRoute
   ProjectsRoute: typeof ProjectsRoute
+  TeacherRoute: typeof TeacherRouteWithChildren
   WellbeingRoute: typeof WellbeingRoute
   WorkspaceRoute: typeof WorkspaceRoute
 }
@@ -135,6 +251,13 @@ declare module '@tanstack/react-router' {
       path: '/wellbeing'
       fullPath: '/wellbeing'
       preLoaderRoute: typeof WellbeingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/teacher': {
+      id: '/teacher'
+      path: '/teacher'
+      fullPath: '/teacher'
+      preLoaderRoute: typeof TeacherRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/projects': {
@@ -158,6 +281,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ForestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/community': {
+      id: '/community'
+      path: '/community'
+      fullPath: '/community'
+      preLoaderRoute: typeof CommunityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/calendar': {
       id: '/calendar'
       path: '/calendar'
@@ -172,15 +302,118 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/teacher/': {
+      id: '/teacher/'
+      path: '/'
+      fullPath: '/teacher/'
+      preLoaderRoute: typeof TeacherIndexRouteImport
+      parentRoute: typeof TeacherRoute
+    }
+    '/teacher/courses': {
+      id: '/teacher/courses'
+      path: '/courses'
+      fullPath: '/teacher/courses'
+      preLoaderRoute: typeof TeacherCoursesRouteImport
+      parentRoute: typeof TeacherRoute
+    }
+    '/teacher/classes': {
+      id: '/teacher/classes'
+      path: '/classes'
+      fullPath: '/teacher/classes'
+      preLoaderRoute: typeof TeacherClassesRouteImport
+      parentRoute: typeof TeacherRoute
+    }
+    '/teacher/analytics': {
+      id: '/teacher/analytics'
+      path: '/analytics'
+      fullPath: '/teacher/analytics'
+      preLoaderRoute: typeof TeacherAnalyticsRouteImport
+      parentRoute: typeof TeacherRoute
+    }
+    '/teacher/courses/': {
+      id: '/teacher/courses/'
+      path: '/'
+      fullPath: '/teacher/courses/'
+      preLoaderRoute: typeof TeacherCoursesIndexRouteImport
+      parentRoute: typeof TeacherCoursesRoute
+    }
+    '/teacher/classes/': {
+      id: '/teacher/classes/'
+      path: '/'
+      fullPath: '/teacher/classes/'
+      preLoaderRoute: typeof TeacherClassesIndexRouteImport
+      parentRoute: typeof TeacherClassesRoute
+    }
+    '/teacher/courses/$courseId': {
+      id: '/teacher/courses/$courseId'
+      path: '/$courseId'
+      fullPath: '/teacher/courses/$courseId'
+      preLoaderRoute: typeof TeacherCoursesCourseIdRouteImport
+      parentRoute: typeof TeacherCoursesRoute
+    }
+    '/teacher/classes/$classId': {
+      id: '/teacher/classes/$classId'
+      path: '/$classId'
+      fullPath: '/teacher/classes/$classId'
+      preLoaderRoute: typeof TeacherClassesClassIdRouteImport
+      parentRoute: typeof TeacherClassesRoute
+    }
   }
 }
+
+interface TeacherClassesRouteChildren {
+  TeacherClassesClassIdRoute: typeof TeacherClassesClassIdRoute
+  TeacherClassesIndexRoute: typeof TeacherClassesIndexRoute
+}
+
+const TeacherClassesRouteChildren: TeacherClassesRouteChildren = {
+  TeacherClassesClassIdRoute: TeacherClassesClassIdRoute,
+  TeacherClassesIndexRoute: TeacherClassesIndexRoute,
+}
+
+const TeacherClassesRouteWithChildren = TeacherClassesRoute._addFileChildren(
+  TeacherClassesRouteChildren,
+)
+
+interface TeacherCoursesRouteChildren {
+  TeacherCoursesCourseIdRoute: typeof TeacherCoursesCourseIdRoute
+  TeacherCoursesIndexRoute: typeof TeacherCoursesIndexRoute
+}
+
+const TeacherCoursesRouteChildren: TeacherCoursesRouteChildren = {
+  TeacherCoursesCourseIdRoute: TeacherCoursesCourseIdRoute,
+  TeacherCoursesIndexRoute: TeacherCoursesIndexRoute,
+}
+
+const TeacherCoursesRouteWithChildren = TeacherCoursesRoute._addFileChildren(
+  TeacherCoursesRouteChildren,
+)
+
+interface TeacherRouteChildren {
+  TeacherAnalyticsRoute: typeof TeacherAnalyticsRoute
+  TeacherClassesRoute: typeof TeacherClassesRouteWithChildren
+  TeacherCoursesRoute: typeof TeacherCoursesRouteWithChildren
+  TeacherIndexRoute: typeof TeacherIndexRoute
+}
+
+const TeacherRouteChildren: TeacherRouteChildren = {
+  TeacherAnalyticsRoute: TeacherAnalyticsRoute,
+  TeacherClassesRoute: TeacherClassesRouteWithChildren,
+  TeacherCoursesRoute: TeacherCoursesRouteWithChildren,
+  TeacherIndexRoute: TeacherIndexRoute,
+}
+
+const TeacherRouteWithChildren =
+  TeacherRoute._addFileChildren(TeacherRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CalendarRoute: CalendarRoute,
+  CommunityRoute: CommunityRoute,
   ForestRoute: ForestRoute,
   LearningRoute: LearningRoute,
   ProjectsRoute: ProjectsRoute,
+  TeacherRoute: TeacherRouteWithChildren,
   WellbeingRoute: WellbeingRoute,
   WorkspaceRoute: WorkspaceRoute,
 }
