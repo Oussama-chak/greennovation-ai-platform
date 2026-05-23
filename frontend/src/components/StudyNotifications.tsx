@@ -1,108 +1,14 @@
-import { useEffect, useRef, useState } from "react";
-import {
-  Sparkles,
-  Coffee,
-  BookOpen,
-  Brain,
-  Leaf,
-  Target,
-  Clock,
-  SlidersHorizontal,
-  Zap,
-  GitBranch,
-  Library,
-  CalendarDays,
-} from "lucide-react";
+import { Zap, GitBranch, Library, CalendarDays } from "lucide-react";
 import type { EnergySnapshot } from "@/lib/api";
-import type { SessionInsights } from "@/lib/parseSessionInsights";
-import { hasSessionInsights } from "@/lib/parseSessionInsights";
 import type { RoutingSummary } from "@/lib/parseToolReplies";
 
-type Notif = {
-  uid: string;
-  icon: typeof Sparkles;
-  title: string;
-  body: string;
-  tone: "primary" | "warm" | "sky";
-  isNew?: boolean;
-};
+type CardTone = "primary" | "warm" | "sky";
 
-const POOL: Omit<Notif, "uid" | "isNew">[] = [
-  {
-    icon: Brain,
-    title: "Suggested study plan",
-    body: "25 min reading → 10 min quiz → 5 min recap. Repeat tomorrow.",
-    tone: "warm",
-  },
-  {
-    icon: Target,
-    title: "You're close to a streak",
-    body: "Just 12 more focused minutes to hit your daily goal. 🔥",
-    tone: "primary",
-  },
-  {
-    icon: Coffee,
-    title: "Time for a micro-break",
-    body: "Stand, stretch, drink water. Bamboo will wait. ☕",
-    tone: "sky",
-  },
-  {
-    icon: BookOpen,
-    title: "Pick up where you left off",
-    body: "You stopped at Ch. 3 — Eigenvectors, page 4. One push to finish?",
-    tone: "warm",
-  },
-  {
-    icon: Leaf,
-    title: "Your forest grew today",
-    body: "+1 sapling planted. 3 more sessions and a new tree appears 🌳",
-    tone: "primary",
-  },
-  {
-    icon: Clock,
-    title: "Best focus window",
-    body: "You concentrate hardest 9:30–11:00. Save Q4 review for then.",
-    tone: "sky",
-  },
-];
-
-const TONE: Record<Notif["tone"], string> = {
+const TONE: Record<CardTone, string> = {
   primary: "bg-primary/10 text-primary border-primary/20",
   warm: "bg-accent/40 text-accent-foreground border-accent/40",
   sky: "bg-secondary/60 text-secondary-foreground border-secondary",
 };
-
-let counter = 0;
-const make = (i: number): Notif => {
-  const item = POOL[i % POOL.length];
-  counter += 1;
-  return { ...item, uid: `n-${counter}` };
-};
-
-// Soft "blip" via WebAudio — no asset needed.
-function playBlip() {
-  try {
-    const Ctx =
-      (window.AudioContext as typeof AudioContext | undefined) ??
-      ((window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext);
-    if (!Ctx) return;
-    const ctx = new Ctx();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.type = "sine";
-    o.frequency.setValueAtTime(880, ctx.currentTime);
-    o.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.08);
-    g.gain.setValueAtTime(0.0001, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.08, ctx.currentTime + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25);
-    o.connect(g).connect(ctx.destination);
-    o.start();
-    o.stop(ctx.currentTime + 0.28);
-    setTimeout(() => ctx.close(), 400);
-  } catch {
-    /* ignore */
-  }
-}
 
 /** Result of POST /api/session/:id/end (planner run when study session ends). */
 export type SessionEndPlannerInfo = {
@@ -113,10 +19,6 @@ export type SessionEndPlannerInfo = {
 } | null;
 
 type StudyNotificationsProps = {
-  /** From API readiness and/or parsed tutor reply lines. */
-  sessionInsights?: SessionInsights | null;
-  /** Increment when insights refresh to replay enter + glow (sync with parent state). */
-  insightsEpoch?: number;
   /** Energy agent decision for the last reply (mode, depth, token budget, reuse flags). */
   energySnapshot?: EnergySnapshot | null;
   /** Orchestrator intent / agents for the last reply. */
@@ -128,101 +30,11 @@ type StudyNotificationsProps = {
 };
 
 export function StudyNotifications({
-  sessionInsights = null,
-  insightsEpoch = 0,
   energySnapshot = null,
   routingSummary = null,
   sources = [],
   sessionEndPlanner = null,
 }: StudyNotificationsProps) {
-  // visible[0] = top, visible[1] = bottom
-  const [visible, setVisible] = useState<Notif[]>(() => [make(0), make(1)]);
-  const [leavingId, setLeavingId] = useState<string | null>(null);
-  const [insightGlow, setInsightGlow] = useState(false);
-  const idxRef = useRef(2);
-  const mountedRef = useRef(false);
-  const lastInsightEpoch = useRef(0);
-
-  useEffect(() => {
-    if (insightsEpoch === 0) {
-      lastInsightEpoch.current = 0;
-      return;
-    }
-    if (insightsEpoch !== lastInsightEpoch.current) {
-      lastInsightEpoch.current = insightsEpoch;
-      setInsightGlow(true);
-      const t = window.setTimeout(() => setInsightGlow(false), 1200);
-      return () => window.clearTimeout(t);
-    }
-  }, [insightsEpoch]);
-
-  useEffect(() => {
-    const tick = () => {
-      // Step 1: mark top as leaving
-      const top = visible[0];
-      setLeavingId(top.uid);
-
-      // Step 2: after exit animation, drop top, append new
-      setTimeout(() => {
-        setVisible((cur) => {
-          const next = make(idxRef.current);
-          idxRef.current += 1;
-          const newList = [cur[1], { ...next, isNew: true }];
-          return newList;
-        });
-        setLeavingId(null);
-        if (mountedRef.current) playBlip();
-
-        // remove "isNew" flag after the highlight pulse
-        setTimeout(() => {
-          setVisible((cur) => cur.map((n) => ({ ...n, isNew: false })));
-        }, 1200);
-      }, 450);
-    };
-
-    const t = setInterval(tick, 7000);
-    mountedRef.current = true;
-    return () => clearInterval(t);
-  }, [visible]);
-
-  const insightRows: {
-    key: string;
-    icon: typeof Clock;
-    tone: Notif["tone"];
-    title: string;
-    body: string;
-  }[] = [];
-  if (sessionInsights && hasSessionInsights(sessionInsights)) {
-    if (sessionInsights.sessionMinutes) {
-      insightRows.push({
-        key: "minutes",
-        icon: Clock,
-        tone: "primary",
-        title: "Session minutes",
-        body: sessionInsights.sessionMinutes,
-      });
-    }
-    if (sessionInsights.breakNeeded) {
-      insightRows.push({
-        key: "break",
-        icon: Coffee,
-        tone: "sky",
-        title: "Break needed",
-        body: sessionInsights.breakNeeded,
-      });
-    }
-    if (sessionInsights.difficultyAdjustment) {
-      insightRows.push({
-        key: "difficulty",
-        icon: SlidersHorizontal,
-        tone: "warm",
-        title: "Difficulty adjustment",
-        body: sessionInsights.difficultyAdjustment,
-      });
-    }
-  }
-  const insightCount = insightRows.length;
-
   const reuseTags: string[] = [];
   if (energySnapshot?.reuseCachedAnswer) reuseTags.push("Cached answer");
   if (energySnapshot?.reuseCachedRag) reuseTags.push("Cached retrieval");
@@ -379,106 +191,6 @@ export function StudyNotifications({
           </div>
         </div>
       )}
-      <div className="flex items-center gap-2 px-1 pt-1">
-        <Sparkles className="h-3.5 w-3.5 text-primary" />
-        <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">
-          Live insights
-        </span>
-      </div>
-      <div className="relative space-y-3">
-        {insightRows.map((row, idx) => {
-          const Icon = row.icon;
-          return (
-            <div
-              key={`${insightsEpoch}-${row.key}`}
-              className={`relative rounded-2xl bg-card border border-border shadow-card p-4 flex items-start gap-3 ${
-                insightGlow ? "ring-2 ring-primary/40" : ""
-              }`}
-              style={{ animation: "notif-enter 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)" }}
-            >
-              {insightGlow && (
-                <span
-                  className="pointer-events-none absolute inset-0 rounded-2xl"
-                  style={{ animation: "notif-glow 1.2s ease-out" }}
-                />
-              )}
-              <div
-                className={`h-10 w-10 rounded-full border grid place-items-center shrink-0 ${TONE[row.tone]}`}
-              >
-                <Icon className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-xs font-bold text-primary flex items-center gap-1.5">
-                  {row.title}
-                  {idx === 0 && (
-                    <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{row.body}</p>
-              </div>
-            </div>
-          );
-        })}
-        {visible.map((n, i) => {
-          const Icon = n.icon;
-          const leaving = leavingId === n.uid;
-          const animation = leaving
-            ? "notif-leave 0.45s cubic-bezier(0.4, 0, 1, 1) forwards"
-            : n.isNew
-              ? "notif-enter 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)"
-              : "notif-shift 0.5s cubic-bezier(0.34, 1.4, 0.64, 1)";
-          const showPulse = insightCount === 0 && i === 0;
-          return (
-            <div
-              key={n.uid}
-              className={`relative rounded-2xl bg-card border border-border shadow-card p-4 flex items-start gap-3 ${
-                n.isNew ? "ring-2 ring-primary/40" : ""
-              }`}
-              style={{ animation }}
-            >
-              {n.isNew && (
-                <span
-                  className="pointer-events-none absolute inset-0 rounded-2xl"
-                  style={{ animation: "notif-glow 1.2s ease-out" }}
-                />
-              )}
-              <div
-                className={`h-10 w-10 rounded-full border grid place-items-center shrink-0 ${TONE[n.tone]}`}
-              >
-                <Icon className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-xs font-bold text-primary flex items-center gap-1.5">
-                  {n.title}
-                  {showPulse && (
-                    <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{n.body}</p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <style>{`
-        @keyframes notif-enter {
-          0% { transform: translateY(28px) scale(0.92); opacity: 0; }
-          60% { transform: translateY(-2px) scale(1.02); opacity: 1; }
-          100% { transform: translateY(0) scale(1); opacity: 1; }
-        }
-        @keyframes notif-leave {
-          0% { transform: translateY(0) scale(1); opacity: 1; }
-          100% { transform: translateY(-24px) scale(0.96); opacity: 0; }
-        }
-        @keyframes notif-shift {
-          0% { transform: translateY(14px) scale(0.98); }
-          100% { transform: translateY(0) scale(1); }
-        }
-        @keyframes notif-glow {
-          0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 50%, transparent); }
-          100% { box-shadow: 0 0 0 14px color-mix(in oklab, var(--primary) 0%, transparent); }
-        }
-      `}</style>
     </div>
   );
 }

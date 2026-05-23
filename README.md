@@ -374,6 +374,21 @@ cd greenNovation
 pip install -e ".[api]"
 ```
 
+**`ValueError: numpy.dtype size changed` (pandas / numpy mismatch)**
+
+Your global `pandas` was likely built for NumPy 1.x while NumPy 2.x is installed. Reinstall from the repo root:
+
+```bash
+cd greenNovation
+pip install -e ".[api]" --upgrade --force-reinstall pandas scikit-learn
+```
+
+Or use a fresh venv: `python -m venv venv`, activate it, then `pip install -e ".[api]"`.
+
+**Protobuf / TensorFlow error when loading `transformers`**
+
+The app sets `TRANSFORMERS_NO_TF=1` in `bootstrap()` so TensorFlow is not loaded. If you still see protobuf errors, upgrade pandas (above) or use a dedicated venv.
+
 **CORS errors in frontend**
 
 ```bash

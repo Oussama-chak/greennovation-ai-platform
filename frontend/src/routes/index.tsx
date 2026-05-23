@@ -326,7 +326,7 @@ function NextActionCard() {
       </div>
       <div className="relative">
         <div className="text-xs uppercase tracking-widest opacity-70 font-semibold mb-2">
-          AI Recommendation
+          .
         </div>
         <h2 className="font-display text-2xl lg:text-3xl font-bold leading-tight">
           Review{" "}
@@ -349,10 +349,10 @@ function NextActionCard() {
           <button className="rounded-xl bg-primary-foreground/15 px-4 py-2.5 text-sm font-medium hover:bg-primary-foreground/25 transition">
             Explain why
           </button>
-          <div className="ml-auto flex items-center gap-1.5 text-xs opacity-80">
+          {/* <div className="ml-auto flex items-center gap-1.5 text-xs opacity-80">
             <Zap className="h-3.5 w-3.5" />
             ~ 0.04 kWh
-          </div>
+          </div> */}
         </div>
       </div>
     </Card>

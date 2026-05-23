@@ -12,7 +12,6 @@ import {
   Search,
   Menu,
   X,
-  Zap,
 } from "lucide-react";
 import { DailyReward } from "@/components/DailyReward";
 import { FloatingBamboo } from "@/components/FloatingBamboo";
@@ -166,10 +165,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
             </div>
 
             <div className="flex items-center gap-2 ml-auto">
-              <div className="hidden sm:flex items-center gap-2 rounded-full bg-success/10 text-success px-3 py-1.5 text-xs font-semibold">
-                <Zap className="h-3.5 w-3.5" />
-                Eco mode
-              </div>
               <BreathingBreakButton onClick={() => setBreakOpen(true)} />
               <BreathingBreakIconButton onClick={() => setBreakOpen(true)} />
               <button className="relative rounded-xl p-2.5 hover:bg-muted transition-colors">

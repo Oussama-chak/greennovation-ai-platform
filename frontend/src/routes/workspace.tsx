@@ -35,12 +35,7 @@ import {
 } from "@/lib/api";
 import { getStoredChatSessionId, setStoredChatSessionId } from "@/lib/chatSession";
 import { buildCorpusMaterial } from "@/lib/corpusWorkspace";
-import {
-  hasSessionInsights,
-  mergeSessionInsights,
-  stripSessionInsightLines,
-  type SessionInsights,
-} from "@/lib/parseSessionInsights";
+import { stripSessionInsightLines } from "@/lib/parseSessionInsights";
 import {
   extractQuizItems,
   formatRoutingSummary,
@@ -171,10 +166,6 @@ function WorkspacePage() {
   const [thinking, setThinking] = useState(false);
   /** Hydration-safe: localStorage only read after mount (see useEffect below). */
   const [sessionId, setSessionId] = useState<string | null>(null);
-  /** From API readiness + optional reply parsing — Live insights column */
-  const [sessionInsights, setSessionInsights] = useState<SessionInsights | null>(null);
-  /** Bumps when insights update so cards replay the “popup” animation */
-  const [insightsEpoch, setInsightsEpoch] = useState(0);
   /** Energy agent snapshot from the last successful /api/chat response */
   const [energySnapshot, setEnergySnapshot] = useState<EnergySnapshot | null>(null);
   /** Orchestrator routing from the last reply (intent, agents, reason) */
@@ -207,8 +198,6 @@ function WorkspacePage() {
     setStoredChatSessionId(null);
     setSessionId(null);
     setMessages([]);
-    setSessionInsights(null);
-    setInsightsEpoch(0);
     setEnergySnapshot(null);
     setRoutingSnapshot(null);
     setSourcesList([]);
@@ -388,12 +377,7 @@ function WorkspacePage() {
           : [res.reply, ...(res.warnings?.length ? [`\n\n_${res.warnings.join(" ")}_`] : [])].join(
               "",
             );
-      const { cleaned, insights: parsedInsights } = stripSessionInsightLines(reply);
-      const merged = mergeSessionInsights(parsedInsights, res.session_insights ?? undefined);
-      if (merged && hasSessionInsights(merged)) {
-        setSessionInsights(merged);
-        setInsightsEpoch((e) => e + 1);
-      }
+      const { cleaned } = stripSessionInsightLines(reply);
       setEnergySnapshot(res.energy ?? null);
       setRoutingSnapshot(formatRoutingSummary(res.routing ?? null));
       const sourcesFromReply = parseSourcesFromReply(cleaned);
@@ -900,8 +884,6 @@ function WorkspacePage() {
 
           <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden overscroll-contain [scrollbar-width:thin] pr-0.5 pb-2">
             <StudyNotifications
-              sessionInsights={sessionInsights}
-              insightsEpoch={insightsEpoch}
               energySnapshot={energySnapshot}
               routingSummary={routingSnapshot}
               sources={sourcesList}
@@ -916,7 +898,7 @@ function WorkspacePage() {
           <AlertDialogHeader>
             <AlertDialogTitle>End study session?</AlertDialogTitle>
             <AlertDialogDescription>
-              This clears the conversation, resets live insights, runs the planner, deletes the AI session on the server,
+              This clears the conversation, runs the planner, deletes the AI session on the server,
               and opens a short breathing break. Turn the study session on again to restart the timer from{" "}
               {Math.floor(WORKSPACE_STUDY_COUNTDOWN_SECONDS / 60)} minutes.
             </AlertDialogDescription>
