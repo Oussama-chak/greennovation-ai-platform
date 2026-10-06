@@ -24,13 +24,13 @@ import {
 export const Route = createFileRoute("/wellbeing")({
   head: () => ({
     meta: [
-      { title: "Well-being — EcoLearn AI" },
+      { title: "Well-being — Routiny" },
       {
         name: "description",
         content:
           "Smart emotional and productivity dashboard. Check in, see insights, and balance your study habits.",
       },
-      { property: "og:title", content: "Well-being — EcoLearn AI" },
+      { property: "og:title", content: "Well-being — Routiny" },
       {
         property: "og:description",
         content: "Your personal mental coach. Mood, focus, sleep, and AI-powered insights.",
@@ -207,7 +207,7 @@ function WellbeingPage() {
       <PageHeader
         eyebrow="Well-being"
         title="Your emotional dashboard"
-        description="A gentle check-in — EcoLearn turns your signals into a kinder schedule."
+        description="A gentle check-in — Routiny turns your signals into a kinder schedule."
       />
 
       {/* ─── Daily Check-in ─── */}

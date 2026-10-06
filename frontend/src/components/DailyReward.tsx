@@ -16,8 +16,8 @@ const QUOTES = [
   "Knowledge is the only thing that grows when you share it. 🌿",
 ];
 
-const STORAGE_KEY = "ecolearn:lastReward";
-export const PENDING_REWARD_KEY = "ecolearn:pendingTree";
+const STORAGE_KEY = "routiny:lastReward";
+export const PENDING_REWARD_KEY = "routiny:pendingTree";
 
 function todayKey() {
   const d = new Date();

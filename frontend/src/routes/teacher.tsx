@@ -4,7 +4,7 @@ import { TeacherProjectsProvider } from "@/context/TeacherProjectsContext";
 export const Route = createFileRoute("/teacher")({
   head: () => ({
     meta: [
-      { title: "Teacher Office - EcoLearn AI" },
+      { title: "Teacher Office - Routiny" },
       {
         name: "description",
         content:

@@ -31,13 +31,13 @@ import treeSapling from "@/assets/tree-sapling.png";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Dashboard — EcoLearn AI" },
+      { title: "Dashboard — Routiny" },
       {
         name: "description",
         content:
           "Your command center: readiness, study plan, deadlines and Eco Forest at a glance.",
       },
-      { property: "og:title", content: "Dashboard — EcoLearn AI" },
+      { property: "og:title", content: "Dashboard — Routiny" },
       {
         property: "og:description",
         content: "What should I do now? Your AI-powered student dashboard answers it.",
@@ -113,7 +113,7 @@ function Dashboard() {
             Tuesday · Week 7
           </div>
           <h1 className="font-display text-3xl lg:text-4xl font-bold tracking-tight">
-            Good morning, <span className="text-gradient-primary">Sara</span> 🌿
+            Good morning, <span className="text-gradient-primary">Sara</span> 
           </h1>
           <p className="text-muted-foreground mt-2">{readinessLine}</p>
         </div>

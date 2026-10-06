@@ -53,7 +53,7 @@ import {
 export const Route = createFileRoute("/community")({
   head: () => ({
     meta: [
-      { title: "Community - EcoLearn AI" },
+      { title: "Community - Routiny" },
       {
         name: "description",
         content:

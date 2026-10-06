@@ -18,12 +18,12 @@ export const Route = createFileRoute("/forest")({
   }),
   head: () => ({
     meta: [
-      { title: "Eco Forest — EcoLearn AI" },
+      { title: "Eco Forest — Routiny" },
       {
         name: "description",
         content: "Grow a virtual forest by studying consistently — every session waters a tree.",
       },
-      { property: "og:title", content: "Eco Forest — EcoLearn AI" },
+      { property: "og:title", content: "Eco Forest — Routiny" },
       {
         property: "og:description",
         content: "Gamified, sustainable, and a little bit magical.",

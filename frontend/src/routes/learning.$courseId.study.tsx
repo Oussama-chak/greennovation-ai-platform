@@ -20,7 +20,7 @@ export const Route = createFileRoute("/learning/$courseId/study")({
   }),
   head: ({ params }) => ({
     meta: [
-      { title: `Study — ${params.courseId} — EcoLearn AI` },
+      { title: `Study — ${params.courseId} — Routiny` },
       {
         name: "description",
         content: "Course workspace with reader, AI chat, summaries and quizzes.",

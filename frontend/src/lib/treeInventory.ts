@@ -1,9 +1,9 @@
 // Lightweight global tree-inventory store with subscription API.
 // Used by DailyReward, Projects, Forest, and the floating reward toast.
 
-const INVENTORY_KEY = "ecolearn:treeInventory";
-const HISTORY_KEY = "ecolearn:treeHistory"; // dedupe daily/project rewards
-const SEED_KEY = "ecolearn:treeSeeded"; // tracks initial seed grant
+const INVENTORY_KEY = "routiny:treeInventory";
+const HISTORY_KEY = "routiny:treeHistory"; // dedupe daily/project rewards
+const SEED_KEY = "routiny:treeSeeded"; // tracks initial seed grant
 const INITIAL_TREES = 3;
 
 export type TreeReward = {

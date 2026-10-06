@@ -38,12 +38,12 @@ import {
 export const Route = createFileRoute("/projects")({
   head: () => ({
     meta: [
-      { title: "Projects — EcoLearn AI" },
+      { title: "Projects — Routiny" },
       {
         name: "description",
         content: "Track milestones, deadlines and AI-suggested next steps for every project.",
       },
-      { property: "og:title", content: "Projects — EcoLearn AI" },
+      { property: "og:title", content: "Projects — Routiny" },
       {
         property: "og:description",
         content: "A smart project manager built for students.",

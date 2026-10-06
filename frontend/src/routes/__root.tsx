@@ -41,14 +41,14 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "EcoLearn AI — Your Student Operating System" },
+      { title: "Routiny — Your Student Operating System" },
       {
         name: "description",
         content:
-          "EcoLearn AI is a sustainable, AI-powered student operating system for learning, planning, and well-being.",
+          "Routiny is a sustainable, AI-powered student operating system for learning, planning, and well-being.",
       },
-      { name: "author", content: "EcoLearn AI" },
-      { property: "og:title", content: "EcoLearn AI — Your Student Operating System" },
+      { name: "author", content: "Routiny" },
+      { property: "og:title", content: "Routiny — Your Student Operating System" },
       {
         property: "og:description",
         content: "Adaptive learning, smart planning, and an Eco Forest that grows as you study.",

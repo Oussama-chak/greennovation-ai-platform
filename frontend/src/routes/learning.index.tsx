@@ -21,12 +21,12 @@ import {
 export const Route = createFileRoute("/learning/")({
   head: () => ({
     meta: [
-      { title: "My Classroom — EcoLearn AI" },
+      { title: "My Classroom — Routiny" },
       {
         name: "description",
         content: "Your enrolled courses, chapters, and study sessions in one place.",
       },
-      { property: "og:title", content: "My Classroom — EcoLearn AI" },
+      { property: "og:title", content: "My Classroom — Routiny" },
       {
         property: "og:description",
         content: "Pick a course, choose a chapter, and start a focused study session.",

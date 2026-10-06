@@ -996,12 +996,7 @@ export function WorkspaceSession({
           </div>
 
           <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden overscroll-contain [scrollbar-width:thin] pr-0.5 pb-2">
-            <StudyNotifications
-              energySnapshot={energySnapshot}
-              routingSummary={routingSnapshot}
-              sources={sourcesList}
-              sessionEndPlanner={sessionEndPlanner}
-            />
+            <StudyNotifications sessionEndPlanner={sessionEndPlanner} />
           </div>
         </aside>
       </div>

@@ -82,7 +82,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                       : "opacity-0 -translate-x-2 pointer-events-none"
                   }`}
                 >
-                  <div className="font-display text-lg font-bold tracking-tight">EcoLearn</div>
+                  <div className="font-display text-lg font-bold tracking-tight">Routiny</div>
                   <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
                     AI · OS
                   </div>

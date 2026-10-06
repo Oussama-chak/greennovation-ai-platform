@@ -17,13 +17,13 @@ import {
 export const Route = createFileRoute("/calendar")({
   head: () => ({
     meta: [
-      { title: "Calendar — EcoLearn AI" },
+      { title: "Calendar — Routiny" },
       {
         name: "description",
         content:
           "A vibrant monthly view of your study sessions, projects and deadlines — at a glance.",
       },
-      { property: "og:title", content: "Calendar — EcoLearn AI" },
+      { property: "og:title", content: "Calendar — Routiny" },
       {
         property: "og:description",
         content: "Your week, your month, your momentum — beautifully organized.",
