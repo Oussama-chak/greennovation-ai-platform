@@ -5,6 +5,7 @@ import { PENDING_REWARD_KEY } from "@/components/DailyReward";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Trees, Flame, Leaf, Award, Sprout, Sparkles, Gift } from "lucide-react";
 import treeOak from "@/assets/tree-oak.png";
+import { LibraryScene } from "@/components/knowledge/LibraryScene";
 import treePine from "@/assets/tree-pine.png";
 import treeBlossom from "@/assets/tree-blossom.png";
 import treeBamboo from "@/assets/tree-bamboo.png";
@@ -18,16 +19,10 @@ export const Route = createFileRoute("/forest")({
   }),
   head: () => ({
     meta: [
-      { title: "Eco Forest — Routiny" },
-      {
-        name: "description",
-        content: "Grow a virtual forest by studying consistently — every session waters a tree.",
-      },
-      { property: "og:title", content: "Eco Forest — Routiny" },
-      {
-        property: "og:description",
-        content: "Gamified, sustainable, and a little bit magical.",
-      },
+      { title: "Knowledge Library — EcoLearn AI" },
+      { name: "description", content: "Build your own 3D library. Every daily lesson and finished project adds a new book to your shelves." },
+      { property: "og:title", content: "Knowledge Library — EcoLearn AI" },
+      { property: "og:description", content: "Every reward becomes a book. Watch your personal library grow." },
     ],
   }),
   component: () => (

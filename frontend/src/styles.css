@@ -58,6 +58,11 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-world-sky: var(--world-sky);
+  --color-world-green: var(--world-green);
+  --color-world-gold: var(--world-gold);
+  --color-world-coral: var(--world-coral);
+  --color-world-ink: var(--world-ink);
 
   --font-display: "Plus Jakarta Sans", system-ui, sans-serif;
   --font-sans: "Inter", system-ui, sans-serif;
@@ -354,6 +359,20 @@
 }
 
 :root {
+  --world-sky: #e8f3f0;
+  --world-green: #37836b;
+  --world-gold: #ecb653;
+  --world-coral: #e78a94;
+  --world-ink: #243f3b;
+  --world-grass: #9ec9a7;
+  --world-rock: #aac4bf;
+  --world-rock-shadow: #799f98;
+  --world-paper: #fff9e9;
+  --world-water: #87ced1;
+  --world-wood: #b9835a;
+  --world-wood-dark: #6e4a33;
+  --world-wall: #f3e9d6;
+  --world-floor: #d9b48c;
   --radius: 1rem;
 
   /* Warm cream background, deep forest text */
@@ -408,6 +427,22 @@
   --sidebar-accent-foreground: oklch(0.3 0.08 165);
   --sidebar-border: oklch(0.9 0.03 140);
   --sidebar-ring: oklch(0.72 0.14 155);
+}
+
+.knowledge-page { letter-spacing: 0; }
+.knowledge-page h1, .knowledge-page h2, .knowledge-page h3 { letter-spacing: 0; }
+.knowledge-scene { height: min(64vh, 640px); min-height: 400px; }
+.knowledge-scene canvas { touch-action: none; }
+.island-toast { animation: island-arrival .5s ease-out both; }
+@keyframes island-arrival {
+  from { opacity: 0; transform: translateY(12px) scale(.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (max-width: 640px) {
+  .knowledge-scene { height: 460px; min-height: 360px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .island-toast { animation: none; }
 }
 
 .dark {

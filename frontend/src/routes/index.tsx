@@ -371,7 +371,7 @@ function EcoForestCard() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <Trees className="h-4 w-4 text-primary" />
-            My Forest
+            Knowledge Library
           </div>
           <span className="text-xs rounded-full bg-card/70 px-2 py-1 font-semibold">
             🔥 4-day streak
@@ -388,15 +388,15 @@ function EcoForestCard() {
           />
         </div>
         <div className="text-center">
-          <div className="font-display text-2xl font-bold">12 trees</div>
-          <div className="text-xs text-muted-foreground">Grown this semester</div>
+          <div className="font-display text-2xl font-bold">A world of ideas</div>
+          <div className="text-xs text-muted-foreground">Your floating learning sanctuary</div>
         </div>
         <Link
           to="/forest"
           search={{ reward: undefined }}
           className="mt-3 flex items-center justify-center gap-1.5 text-xs font-semibold text-primary hover:underline"
         >
-          Visit your forest <ArrowRight className="h-3.5 w-3.5" />
+          Explore your islands <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       </div>
     </Card>
