@@ -13,6 +13,7 @@ import { Route as WorkspaceRouteImport } from './routes/workspace'
 import { Route as WellbeingRouteImport } from './routes/wellbeing'
 import { Route as TeacherRouteImport } from './routes/teacher'
 import { Route as ProjectsRouteImport } from './routes/projects'
+import { Route as LibraryRouteImport } from './routes/library'
 import { Route as LearningRouteImport } from './routes/learning'
 import { Route as ForestRouteImport } from './routes/forest'
 import { Route as CommunityRouteImport } from './routes/community'
@@ -48,6 +49,11 @@ const TeacherRoute = TeacherRouteImport.update({
 const ProjectsRoute = ProjectsRouteImport.update({
   id: '/projects',
   path: '/projects',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LibraryRoute = LibraryRouteImport.update({
+  id: '/library',
+  path: '/library',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LearningRoute = LearningRouteImport.update({
@@ -137,6 +143,7 @@ export interface FileRoutesByFullPath {
   '/community': typeof CommunityRoute
   '/forest': typeof ForestRoute
   '/learning': typeof LearningRouteWithChildren
+  '/library': typeof LibraryRoute
   '/projects': typeof ProjectsRoute
   '/teacher': typeof TeacherRouteWithChildren
   '/wellbeing': typeof WellbeingRoute
@@ -158,6 +165,7 @@ export interface FileRoutesByTo {
   '/calendar': typeof CalendarRoute
   '/community': typeof CommunityRoute
   '/forest': typeof ForestRoute
+  '/library': typeof LibraryRoute
   '/projects': typeof ProjectsRoute
   '/wellbeing': typeof WellbeingRoute
   '/workspace': typeof WorkspaceRoute
@@ -178,6 +186,7 @@ export interface FileRoutesById {
   '/community': typeof CommunityRoute
   '/forest': typeof ForestRoute
   '/learning': typeof LearningRouteWithChildren
+  '/library': typeof LibraryRoute
   '/projects': typeof ProjectsRoute
   '/teacher': typeof TeacherRouteWithChildren
   '/wellbeing': typeof WellbeingRoute
@@ -202,6 +211,7 @@ export interface FileRouteTypes {
     | '/community'
     | '/forest'
     | '/learning'
+    | '/library'
     | '/projects'
     | '/teacher'
     | '/wellbeing'
@@ -223,6 +233,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/community'
     | '/forest'
+    | '/library'
     | '/projects'
     | '/wellbeing'
     | '/workspace'
@@ -242,6 +253,7 @@ export interface FileRouteTypes {
     | '/community'
     | '/forest'
     | '/learning'
+    | '/library'
     | '/projects'
     | '/teacher'
     | '/wellbeing'
@@ -265,6 +277,7 @@ export interface RootRouteChildren {
   CommunityRoute: typeof CommunityRoute
   ForestRoute: typeof ForestRoute
   LearningRoute: typeof LearningRouteWithChildren
+  LibraryRoute: typeof LibraryRoute
   ProjectsRoute: typeof ProjectsRoute
   TeacherRoute: typeof TeacherRouteWithChildren
   WellbeingRoute: typeof WellbeingRoute
@@ -299,6 +312,13 @@ declare module '@tanstack/react-router' {
       path: '/projects'
       fullPath: '/projects'
       preLoaderRoute: typeof ProjectsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/library': {
+      id: '/library'
+      path: '/library'
+      fullPath: '/library'
+      preLoaderRoute: typeof LibraryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/learning': {
@@ -483,6 +503,7 @@ const rootRouteChildren: RootRouteChildren = {
   CommunityRoute: CommunityRoute,
   ForestRoute: ForestRoute,
   LearningRoute: LearningRouteWithChildren,
+  LibraryRoute: LibraryRoute,
   ProjectsRoute: ProjectsRoute,
   TeacherRoute: TeacherRouteWithChildren,
   WellbeingRoute: WellbeingRoute,
