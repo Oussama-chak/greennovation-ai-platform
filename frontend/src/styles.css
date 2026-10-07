@@ -359,6 +359,13 @@
 }
 
 :root {
+  --reader-ink: oklch(0.3 0.055 65);
+  --reader-muted: oklch(0.47 0.045 65);
+  --reader-gold: oklch(0.58 0.11 75);
+  --reader-teal: oklch(0.34 0.07 180);
+  --reader-paper: oklch(0.95 0.035 85);
+  --reader-veil: oklch(0.18 0.025 170 / 0.58);
+  --reader-shadow: oklch(0.1 0.025 160 / 0.5);
   --world-sky: #e8f3f0;
   --world-green: #37836b;
   --world-gold: #ecb653;
