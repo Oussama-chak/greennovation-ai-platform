@@ -19,4 +19,4 @@ def bootstrap() -> None:
     # Avoid importing TensorFlow via transformers (PyTorch-only stack; prevents protobuf/tf clashes).
     os.environ.setdefault("TRANSFORMERS_NO_TF", "1")
     os.environ.setdefault("USE_TF", "0")
-    load_dotenv(root / ".env")
+    load_dotenv(root / ".env", override=True)

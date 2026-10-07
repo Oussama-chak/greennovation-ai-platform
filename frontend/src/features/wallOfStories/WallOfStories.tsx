@@ -221,15 +221,17 @@ function Lantern({ side }: { side: "l" | "r" }) {
   return (
     <svg
       className={`wos-lan ${side}`}
-      width="38"
-      height="66"
+      width="42"
+      height="72"
       viewBox="0 0 40 70"
       aria-hidden
     >
-      <path d="M20 2v8" stroke="#5a9e7a" strokeWidth="2" />
-      <path d="M9 13h22l-4-7H13z" fill="#3d7a5c" />
+      <ellipse cx="20" cy="30" rx="16" ry="22" fill="url(#wos-lan-aura)" opacity="0.85" />
+      <path d="M20 2v8" stroke="#c9a45a" strokeWidth="2" />
+      <path d="M9 13h22l-4-7H13z" fill="#8a6238" />
       <rect x="11" y="13" width="18" height="33" rx="3" fill="url(#wos-lg)" />
-      <path d="M8 46h24l-3 9H11z" fill="#3d7a5c" />
+      <path d="M14 18h12M14 28h12M14 38h12" stroke="#ffe9b0" strokeWidth="0.6" opacity="0.55" />
+      <path d="M8 46h24l-3 9H11z" fill="#6b4424" />
     </svg>
   );
 }
@@ -492,10 +494,15 @@ export function WallOfStories({
       <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden>
         <defs>
           <linearGradient id="wos-lg" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#b8f0c8" />
-            <stop offset="0.55" stopColor="#f0d878" />
-            <stop offset="1" stopColor="#7ed6b0" />
+            <stop offset="0" stopColor="#fff4c8" />
+            <stop offset="0.45" stopColor="#ffd078" />
+            <stop offset="1" stopColor="#e09040" />
           </linearGradient>
+          <radialGradient id="wos-lan-aura" cx="50%" cy="45%" r="50%">
+            <stop offset="0" stopColor="#ffe8a0" stopOpacity="0.7" />
+            <stop offset="0.55" stopColor="#f0b050" stopOpacity="0.2" />
+            <stop offset="1" stopColor="#f0b050" stopOpacity="0" />
+          </radialGradient>
         </defs>
       </svg>
 
@@ -589,6 +596,16 @@ export function WallOfStories({
         >
           <Lantern side="l" />
           <Lantern side="r" />
+          <div className="wos-magic" aria-hidden>
+            <span className="wos-mote" />
+            <span className="wos-mote" />
+            <span className="wos-mote" />
+            <span className="wos-mote" />
+            <span className="wos-mote" />
+            <span className="wos-mote" />
+            <span className="wos-mote" />
+            <span className="wos-mote" />
+          </div>
           <div>
             {shelves.map((rowBooks, row) => (
               <div key={row} className="wos-shelf">

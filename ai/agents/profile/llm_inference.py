@@ -3,11 +3,13 @@ from __future__ import annotations
 import json
 import os
 from typing import Any, Dict, List
-from dotenv import load_dotenv
 
-from mistralai.client import Mistral
+from dotenv import load_dotenv
+from langchain_core.messages import HumanMessage, SystemMessage
+from ai.llm import chat_model, groq_model
 from ai.agents.profile.prompt import PROFILE_SYSTEM_PROMPT
 from ai.agents.profile.schema import ProfileAndTwinInference
+
 load_dotenv()
 
 def _serialize_history(history: List[Dict[str, Any]]) -> str:
@@ -18,27 +20,35 @@ def _serialize_dict(data: Dict[str, Any]) -> str:
     return json.dumps(data, ensure_ascii=False, indent=2)
 
 
-def get_mistral_client() -> Mistral:
-    api_key = os.getenv("MISTRAL_API_KEY")
-    if not api_key:
-        raise ValueError("MISTRAL_API_KEY is not set")
-    return Mistral(api_key=api_key)
+def get_profile_llm(model: str | None = None):
+    if not os.getenv("GROQ_API_KEY"):
+        raise ValueError("GROQ_API_KEY is not set")
+    return chat_model(temperature=0.2, model=model or groq_model())
 
 
-async def infer_profile_with_mistral(
+def _parse_profile_json(raw: str) -> ProfileAndTwinInference:
+    text = raw.strip()
+    if text.startswith("```"):
+        text = text.removeprefix("```json").removeprefix("```").strip()
+        if text.endswith("```"):
+            text = text[: -3].strip()
+    start = text.find("{")
+    end = text.rfind("}")
+    if start >= 0 and end > start:
+        text = text[start : end + 1]
+    return ProfileAndTwinInference.model_validate(json.loads(text))
+
+
+async def infer_profile(
     *,
     query: str,
     history: List[Dict[str, Any]],
     user_profile: Dict[str, Any],
     signals: Dict[str, Any],
     student_twin: Dict[str, Any] | None = None,
-    model: str = "mistral-small-latest",
+    model: str | None = None,
 ) -> ProfileAndTwinInference:
-    """
-    Infer the student teaching profile using Mistral structured output.
-    """
-
-    client = get_mistral_client()
+    """Infer the student teaching profile and digital twin using Groq JSON output."""
 
     user_message = f"""
 Current user query:
@@ -77,32 +87,29 @@ STEP 3 — student_twin (longitudinal):
 - If first meaningful interaction, initialize twin from query + signals; else evolve prior state
 - Do not infer sensitive traits; do not use "unknown" when STEP 1 gives clear evidence
 
-Output profile_vector and student_twin per schema.
+Return one JSON object with profile_vector and student_twin. No markdown.
 """.strip()
 
-    response = await client.chat.complete_async(
-        model=model,
-        messages=[
-            {"role": "system", "content": PROFILE_SYSTEM_PROMPT},
-            {"role": "user", "content": user_message},
-        ],
+    # Groq Structured Outputs (json_schema). strict stays false: twin maps are free-form.
+    llm = get_profile_llm(model).bind(
         response_format={
             "type": "json_schema",
             "json_schema": {
                 "name": "ProfileAndTwinInference",
+                "strict": False,
                 "schema": ProfileAndTwinInference.model_json_schema(),
             },
-        },
-        temperature=0.2,
-        safe_prompt=False,
+        }
     )
-
-    content = response.choices[0].message.content
+    response = await llm.ainvoke(
+        [
+            SystemMessage(content=PROFILE_SYSTEM_PROMPT),
+            HumanMessage(content=user_message),
+        ]
+    )
+    content = response.content
     if isinstance(content, list):
         content = "".join(
-            part.get("text", "") if isinstance(part, dict) else str(part)
-            for part in content
+            part.get("text", "") if isinstance(part, dict) else str(part) for part in content
         )
-
-    data = json.loads(content)
-    return ProfileAndTwinInference.model_validate(data)
+    return _parse_profile_json(str(content))

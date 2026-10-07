@@ -10,8 +10,9 @@ import {
   Users,
 } from "lucide-react";
 import { TeacherShell } from "@/components/teacher/TeacherShell";
+import { useCatalog } from "@/context/CatalogContext";
 import { useTeacherProjects } from "@/context/TeacherProjectsContext";
-import { classes, getClass, summarizeClass } from "@/data/teacher";
+import { getClass, summarizeClass } from "@/data/teacher";
 import { type Project } from "@/data/projects";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +37,7 @@ function defaultDueISO() {
 }
 
 function TeacherProjectsPage() {
+  const { classes } = useCatalog();
   const { assignments, createProject, deleteProject, addTask, removeTask } = useTeacherProjects();
   const [classFilter, setClassFilter] = useState<string>("all");
   const [newOpen, setNewOpen] = useState(false);

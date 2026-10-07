@@ -1,15 +1,12 @@
 from typing import Dict, List, Any
-from langchain_groq import ChatGroq
+from ai.llm import chat_model
 import json
 from datetime import datetime
 
 # LLM
 
 def get_llm():
-    return ChatGroq(
-        model="llama-3.1-8b-instant",
-        temperature=0.2  # more deterministic
-    )
+    return chat_model(temperature=0.2)
 
 
 

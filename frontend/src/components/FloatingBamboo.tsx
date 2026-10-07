@@ -214,28 +214,28 @@ export function FloatingBamboo() {
   );
 }
 
-/** Compact Markdown for assistant bubbles (matches API **bold**, lists, numbered steps). */
+/** Compact, managed Markdown for assistant bubbles (GFM + tighter study layout). */
 const chatMarkdownComponents = {
   h1: (props: ComponentPropsWithoutRef<"h1">) => (
-    <h1 className="text-base font-bold mt-3 mb-1.5 first:mt-0 text-foreground" {...props} />
+    <h1 className="text-[15px] font-bold mt-3 mb-1 first:mt-0 text-foreground tracking-tight" {...props} />
   ),
   h2: (props: ComponentPropsWithoutRef<"h2">) => (
-    <h2 className="text-sm font-bold mt-3 mb-1.5 first:mt-0 text-foreground" {...props} />
+    <h2 className="text-[13.5px] font-bold mt-2.5 mb-1 first:mt-0 text-foreground tracking-tight" {...props} />
   ),
   h3: (props: ComponentPropsWithoutRef<"h3">) => (
-    <h3 className="text-sm font-semibold mt-2 mb-1 first:mt-0 text-foreground" {...props} />
+    <h3 className="text-[13px] font-semibold mt-2 mb-0.5 first:mt-0 text-foreground/95" {...props} />
   ),
   p: (props: ComponentPropsWithoutRef<"p">) => (
-    <p className="mb-2.5 last:mb-0 text-foreground/95 leading-relaxed" {...props} />
+    <p className="mb-1.5 last:mb-0 text-foreground/95 leading-6" {...props} />
   ),
   ul: (props: ComponentPropsWithoutRef<"ul">) => (
-    <ul className="my-2 ml-1 list-disc list-outside space-y-1 pl-4 marker:text-muted-foreground" {...props} />
+    <ul className="my-1.5 ml-0.5 list-disc list-outside space-y-0.5 pl-4 marker:text-primary/70" {...props} />
   ),
   ol: (props: ComponentPropsWithoutRef<"ol">) => (
-    <ol className="my-2 ml-1 list-decimal list-outside space-y-1.5 pl-4" {...props} />
+    <ol className="my-1.5 ml-0.5 list-decimal list-outside space-y-0.5 pl-4 marker:font-semibold marker:text-primary/80" {...props} />
   ),
   li: (props: ComponentPropsWithoutRef<"li">) => (
-    <li className="leading-relaxed pl-0.5 [&>p]:mb-0" {...props} />
+    <li className="leading-6 pl-0.5 [&>p]:mb-0.5 [&>p]:leading-6" {...props} />
   ),
   strong: (props: ComponentPropsWithoutRef<"strong">) => (
     <strong className="font-semibold text-foreground" {...props} />
@@ -244,27 +244,133 @@ const chatMarkdownComponents = {
   a: (props: ComponentPropsWithoutRef<"a">) => (
     <a className="text-primary font-medium underline underline-offset-2 decoration-primary/50 hover:decoration-primary" {...props} />
   ),
-  code: (props: { inline?: boolean; className?: string; children?: React.ReactNode }) =>
-    props.inline ? (
-      <code className="rounded-md bg-background/80 px-1.5 py-0.5 font-mono text-[0.85em] text-foreground ring-1 ring-border/60">
-        {props.children}
+  code: ({ className, children, ...rest }: { className?: string; children?: React.ReactNode }) => {
+    const text = String(children ?? "");
+    const isBlock = Boolean(className?.includes("language-") || text.includes("\n"));
+    if (!isBlock) {
+      return (
+        <code
+          className="rounded bg-primary/10 px-1 py-0.5 font-mono text-[0.82em] text-foreground"
+          {...rest}
+        >
+          {children}
+        </code>
+      );
+    }
+    return (
+      <code className={`block w-full font-mono text-[12px] leading-5 text-inherit ${className ?? ""}`} {...rest}>
+        {children}
       </code>
-    ) : (
-      <code className="my-2 block w-full overflow-x-auto rounded-lg bg-background/90 p-3 font-mono text-[0.85em] text-foreground ring-1 ring-border/60">
-        {props.children}
-      </code>
-    ),
+    );
+  },
   pre: (props: ComponentPropsWithoutRef<"pre">) => (
-    <pre className="my-2 overflow-x-auto rounded-lg bg-background/90 p-0" {...props} />
+    <pre
+      className="my-1.5 overflow-x-auto rounded-xl bg-[oklch(0.22_0.02_160)] text-[oklch(0.93_0.02_155)] p-2.5 shadow-sm [&>code]:bg-transparent [&>code]:p-0 [&>code]:text-inherit"
+      {...props}
+    />
   ),
-  hr: () => <hr className="my-3 border-border/80" />,
+  table: (props: ComponentPropsWithoutRef<"table">) => (
+    <div className="my-2 w-full overflow-x-auto rounded-xl border border-primary/15 bg-card/80">
+      <table className="w-full min-w-[16rem] border-collapse text-[12.5px] leading-5" {...props} />
+    </div>
+  ),
+  thead: (props: ComponentPropsWithoutRef<"thead">) => (
+    <thead className="bg-primary/10 text-foreground" {...props} />
+  ),
+  th: (props: ComponentPropsWithoutRef<"th">) => (
+    <th className="px-2.5 py-1.5 text-left font-semibold border-b border-primary/15 whitespace-nowrap" {...props} />
+  ),
+  td: (props: ComponentPropsWithoutRef<"td">) => (
+    <td className="px-2.5 py-1.5 align-top border-b border-border/50 last:border-b-0" {...props} />
+  ),
+  tr: (props: ComponentPropsWithoutRef<"tr">) => (
+    <tr className="even:bg-muted/35" {...props} />
+  ),
+  hr: () => <hr className="my-2 border-border/70" />,
   blockquote: (props: ComponentPropsWithoutRef<"blockquote">) => (
     <blockquote
-      className="my-2 border-l-2 border-primary/40 pl-3 text-muted-foreground italic"
+      className="my-1.5 border-l-2 border-primary/45 pl-2.5 text-muted-foreground text-[13px] leading-6 not-italic"
       {...props}
     />
   ),
 };
+
+function QuizQuestionCard({
+  item,
+  index,
+  calm,
+}: {
+  item: QuizItem;
+  index: number;
+  calm: boolean;
+}) {
+  const options = (item.options ?? []).map((option) => option.trim()).filter(Boolean).slice(0, 3);
+  const [picked, setPicked] = useState<number | null>(null);
+  const correctIndex = options.findIndex((option) => option.toLowerCase() === item.answer.trim().toLowerCase());
+  const isMcq = options.length >= 2;
+
+  return (
+    <li>
+      <div className={calm ? "rounded-xl bg-background/70 px-3.5 py-3" : "rounded-xl border border-border bg-background/90 p-3 shadow-sm"}>
+        <div className="flex items-center justify-between gap-2">
+          <span className={calm ? "text-xs font-medium text-primary" : "text-[10px] font-bold uppercase tracking-wider text-primary"}>
+            Question {index + 1}
+          </span>
+          {item.difficulty ? (
+            <span className="text-[10px] font-medium text-muted-foreground capitalize">{item.difficulty}</span>
+          ) : null}
+        </div>
+        <p className="mt-1.5 font-medium text-foreground">{item.question}</p>
+        {isMcq ? (
+          <div className="mt-3 space-y-2">
+            {options.map((option, optionIndex) => {
+              const revealed = picked !== null;
+              const isCorrect = optionIndex === correctIndex;
+              const isChosen = picked === optionIndex;
+              const tone = !revealed
+                ? "border-border bg-background hover:border-primary/40"
+                : isCorrect
+                  ? "border-primary bg-primary/10"
+                  : isChosen
+                    ? "border-destructive/50 bg-destructive/10"
+                    : "border-border bg-background opacity-70";
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  disabled={revealed}
+                  onClick={() => setPicked(optionIndex)}
+                  className={`flex w-full items-start gap-2 rounded-xl border px-3 py-2 text-left text-sm transition disabled:cursor-default ${tone}`}
+                >
+                  <span className="font-semibold text-primary">{String.fromCharCode(65 + optionIndex)}</span>
+                  <span>{option}</span>
+                </button>
+              );
+            })}
+            {picked !== null ? (
+              <p className="text-xs text-muted-foreground">
+                {picked === correctIndex
+                  ? "Correct."
+                  : `The answer is ${correctIndex >= 0 ? options[correctIndex] : item.answer}.`}
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <details className="mt-2 group">
+            <summary className="cursor-pointer text-xs font-semibold text-primary list-none [&::-webkit-details-marker]:hidden">
+              Show answer
+            </summary>
+            <div className="mt-2 text-sm text-muted-foreground leading-relaxed border-t border-border/60 pt-2">
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={chatMarkdownComponents}>
+                {item.answer}
+              </ReactMarkdown>
+            </div>
+          </details>
+        )}
+      </div>
+    </li>
+  );
+}
 
 export function ChatBubble({
   role,
@@ -273,6 +379,7 @@ export function ChatBubble({
   quizItems,
   summarySections,
   variant = "default",
+  calm = false,
 }: {
   role: "user" | "bamboo";
   text: string;
@@ -280,6 +387,8 @@ export function ChatBubble({
   quizItems?: QuizItem[] | null;
   summarySections?: SummarySections | null;
   variant?: "default" | "summary" | "explain";
+  /** Softer study-page thread: no boxed chrome, room to breathe. */
+  calm?: boolean;
 }) {
   const isUser = role === "user";
   const hasQuiz = !isUser && !streaming && quizItems && quizItems.length > 0;
@@ -298,20 +407,32 @@ export function ChatBubble({
     !summaryFallback &&
     text.trim().length > 0;
 
-  const bubbleShell =
-    isUser
-      ? "bg-primary text-primary-foreground rounded-br-md whitespace-pre-wrap"
+  const bubbleShell = isUser
+    ? calm
+      ? "bg-primary/12 text-foreground rounded-2xl rounded-br-md whitespace-pre-wrap"
+      : "bg-primary text-primary-foreground rounded-br-md whitespace-pre-wrap"
+    : calm
+      ? "bg-muted/55 text-foreground rounded-2xl rounded-tl-md"
       : variant === "explain"
         ? "bg-muted text-foreground rounded-bl-md ring-1 ring-primary/15"
         : "bg-muted text-foreground rounded-bl-md";
 
+  const bubblePad = calm ? (isUser ? "px-3.5 py-2" : "px-3.5 py-2.5") : "px-4 py-2.5";
+  const clamp = calm
+    ? "max-h-[min(62vh,26rem)] overflow-y-auto pr-0.5 [scrollbar-gutter:stable]"
+    : "max-h-[min(70vh,28rem)] overflow-y-auto pr-1 -mr-1 [scrollbar-gutter:stable]";
+
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"} animate-[fade-in-up_0.25s_ease-out]`}>
-      <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${bubbleShell}`}>
+    <div className={`flex ${isUser ? "justify-end" : "justify-start"} animate-[fade-in-up_0.35s_ease-out]`}>
+      <div
+        className={`${calm ? (isUser ? "max-w-[88%]" : "w-full") : "max-w-[85%]"} rounded-2xl ${bubblePad} ${
+          calm ? "text-[14px] leading-6" : "text-[15px] leading-7"
+        } ${bubbleShell}`}
+      >
         {isUser ? (
           text
         ) : hasQuiz ? (
-          <div className="max-h-[min(70vh,28rem)] overflow-y-auto pr-1 -mr-1 [scrollbar-gutter:stable] space-y-3">
+          <div className={`${clamp} space-y-5`}>
             {text.trim().length > 0 && (
               <div className="chat-md">
                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={chatMarkdownComponents}>
@@ -321,47 +442,25 @@ export function ChatBubble({
             )}
             <ol className="space-y-3 list-none m-0 p-0">
               {quizItems!.map((q, i) => (
-                <li key={i}>
-                  <div className="rounded-xl border border-border bg-background/90 p-3 shadow-sm">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
-                        Question {i + 1}
-                      </span>
-                      {q.difficulty ? (
-                        <span className="text-[10px] font-medium text-muted-foreground capitalize">
-                          {q.difficulty}
-                        </span>
-                      ) : null}
-                    </div>
-                    <p className="mt-1.5 font-medium text-foreground">{q.question}</p>
-                    <details className="mt-2 group">
-                      <summary className="cursor-pointer text-xs font-semibold text-primary list-none [&::-webkit-details-marker]:hidden">
-                        Show answer
-                      </summary>
-                      <div className="mt-2 text-sm text-muted-foreground leading-relaxed border-t border-border/60 pt-2">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={chatMarkdownComponents}>
-                          {q.answer}
-                        </ReactMarkdown>
-                      </div>
-                    </details>
-                  </div>
-                </li>
+                <QuizQuestionCard key={i} item={q} index={i} calm={calm} />
               ))}
             </ol>
           </div>
         ) : hasSummaryLayout ? (
-          <div className="max-h-[min(70vh,28rem)] overflow-y-auto pr-1 -mr-1 [scrollbar-gutter:stable] space-y-3">
-            <div className="rounded-xl border border-primary/25 bg-background/80 p-3">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-primary mb-1.5">Summary</div>
+          <div className={`${clamp} space-y-4`}>
+            <div className={calm ? "space-y-2" : "rounded-xl border border-primary/25 bg-background/80 p-3"}>
+              <div className={calm ? "text-xs font-medium text-primary" : "text-[10px] font-bold uppercase tracking-wider text-primary mb-1.5"}>
+                Summary
+              </div>
               <div className="chat-md">
                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={chatMarkdownComponents}>
                   {summarySections!.lead}
                 </ReactMarkdown>
               </div>
             </div>
-            <div className="rounded-xl border border-border bg-muted/50 p-3">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-                Questions and review
+            <div className={calm ? "space-y-2 pt-1" : "rounded-xl border border-border bg-muted/50 p-3"}>
+              <div className={calm ? "text-xs font-medium text-muted-foreground" : "text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5"}>
+                Review
               </div>
               <div className="chat-md">
                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={chatMarkdownComponents}>
@@ -371,15 +470,15 @@ export function ChatBubble({
             </div>
           </div>
         ) : summaryFallback ? (
-          <div className="max-h-[min(70vh,28rem)] overflow-y-auto pr-1 -mr-1 [scrollbar-gutter:stable]">
-            <div className="rounded-xl border border-primary/25 bg-background/90 p-3 chat-md">
+          <div className={clamp}>
+            <div className={calm ? "chat-md" : "rounded-xl border border-primary/25 bg-background/90 p-3 chat-md"}>
               <ReactMarkdown remarkPlugins={[remarkGfm]} components={chatMarkdownComponents}>
                 {text}
               </ReactMarkdown>
             </div>
           </div>
         ) : useMarkdown ? (
-          <div className="chat-md max-h-[min(70vh,28rem)] overflow-y-auto pr-1 -mr-1 [scrollbar-gutter:stable]">
+          <div className={`chat-md ${clamp}`}>
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={chatMarkdownComponents}>
               {text}
             </ReactMarkdown>

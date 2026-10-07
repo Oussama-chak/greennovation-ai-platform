@@ -3,6 +3,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from ai.agents.rag.file_index import index_pdf, list_uploads, safe_pdf_filename
+
 _INDEX_FILES = frozenset({"index.faiss", "index.pkl"})
 
 
@@ -35,6 +37,31 @@ def list_corpus_files() -> dict:
         if not p.is_file():
             continue
         name = p.name
+        if name.startswith("."):
+            continue
         kind = "rag_index" if name in _INDEX_FILES else "document"
         out.append({"name": name, "size_bytes": p.stat().st_size, "kind": kind})
     return {"data_dir": str(base), "files": out}
+
+
+def list_course_uploads() -> dict:
+    return {"uploads": list_uploads()}
+
+
+def ingest_pdf_bytes(payload: bytes, filename: str, course_id: str, chapter_id: str) -> dict:
+    safe_name = safe_pdf_filename(filename)
+    if safe_name is None:
+        raise ValueError("Upload a .pdf file")
+    base = data_dir_path()
+    base.mkdir(parents=True, exist_ok=True)
+    temp = base / f".{safe_name}.uploading"
+    dest = base / safe_name
+    temp.write_bytes(payload)
+    try:
+        record = index_pdf(temp, safe_name, course_id=course_id, chapter_id=chapter_id)
+    except Exception:
+        temp.unlink(missing_ok=True)
+        raise
+    os.replace(temp, dest)
+    record["size_bytes"] = dest.stat().st_size
+    return record

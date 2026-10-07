@@ -6,6 +6,7 @@ export type QuizItem = {
   question: string;
   answer: string;
   difficulty?: string;
+  options?: string[];
 };
 
 /** Prefer structured list from API (exercise JSON). */
@@ -17,11 +18,15 @@ export function extractQuizItems(reply: string, replyRaw: unknown): QuizItem[] |
         const o = x as Record<string, unknown>;
         const q = o.question != null ? String(o.question).trim() : "";
         const a = o.answer != null ? String(o.answer).trim() : "";
+        const options = Array.isArray(o.options)
+          ? o.options.map((item) => String(item).trim()).filter(Boolean).slice(0, 3)
+          : undefined;
         if (q || a) {
           out.push({
             question: q,
             answer: a,
             difficulty: o.difficulty != null ? String(o.difficulty) : undefined,
+            options: options && options.length > 0 ? options : undefined,
           });
         }
       }
@@ -64,6 +69,96 @@ export function quizIntroText(reply: string): string {
 }
 
 export type SummarySections = { lead: string; rest: string };
+
+export type ComposerToolKind = "summary" | "quiz" | "mcq" | "explain";
+
+/**
+ * Infer Summarize / Explain / Quiz / MCQ from natural wording so the student
+ * does not have to tap a mode chip first.
+ */
+export function detectComposerMode(text: string): ComposerToolKind | null {
+  const q = text.trim().toLowerCase();
+  if (!q) return null;
+
+  if (
+    /\b(multiple\s*choice|mcq|choose\s+the\s+correct|pick\s+the\s+correct)\b/.test(q) ||
+    /\b(a\s*\/\s*b\s*\/\s*c|options?\s+a\b)/.test(q)
+  ) {
+    return "mcq";
+  }
+  if (
+    /\b(quiz\s*me|quiz|practice\s+questions?|test\s+me|give\s+me\s+(a\s+)?quiz|exercises?)\b/.test(q)
+  ) {
+    return "quiz";
+  }
+  if (
+    /\b(summarize|summarise|summary|revise|revision|review\s+(this|the|it))\b/.test(q)
+  ) {
+    return "summary";
+  }
+  if (
+    /\b(explain|what\s+is|what'?s|whats\s+|teach\s+me|help\s+me\s+understand|define|describe|walk\s+me\s+through)\b/.test(
+      q,
+    )
+  ) {
+    return "explain";
+  }
+  return null;
+}
+
+type ExplainConcept = { name?: string; definition?: string; example?: string };
+
+/** Turn accidental explain-JSON from the model into readable markdown. */
+export function formatExplainStructuredReply(text: string): string | null {
+  const raw = text.replace(/\r\n/g, "\n").trim();
+  if (!raw.startsWith("{") && !raw.includes('"key_concepts"')) return null;
+
+  let obj: Record<string, unknown> | null = null;
+  try {
+    const start = raw.indexOf("{");
+    const end = raw.lastIndexOf("}");
+    if (start < 0 || end <= start) return null;
+    const parsed = JSON.parse(raw.slice(start, end + 1)) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    obj = parsed as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+
+  const concepts = obj.key_concepts;
+  const introduction = obj.introduction != null ? String(obj.introduction).trim() : "";
+  const takeaway = obj.takeaway != null ? String(obj.takeaway).trim() : "";
+  if (!Array.isArray(concepts) || (!introduction && concepts.length === 0 && !takeaway)) {
+    return null;
+  }
+
+  const parts: string[] = [];
+  if (introduction) parts.push(introduction);
+
+  for (const item of concepts) {
+    if (!item || typeof item !== "object") continue;
+    const c = item as ExplainConcept;
+    const name = c.name != null ? String(c.name).trim() : "";
+    const definition = c.definition != null ? String(c.definition).trim() : "";
+    let example = c.example != null ? String(c.example).trim() : "";
+    if (example) {
+      example = example
+        .replace(/\\n/g, "\n")
+        .replace(/\\t/g, "\t")
+        .replace(/\\"/g, '"');
+    }
+    if (name) parts.push(`### ${name}`);
+    if (definition) parts.push(definition);
+    if (example) {
+      if (/^```/.test(example)) parts.push(example);
+      else parts.push("```\n" + example + "\n```");
+    }
+  }
+
+  if (takeaway) parts.push(`**Takeaway:** ${takeaway}`);
+  const md = parts.join("\n\n").trim();
+  return md.length > 0 ? md : null;
+}
 
 /**
  * Split summary + follow-up (questions / revision) when the model uses clear separators.

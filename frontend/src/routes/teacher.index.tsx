@@ -10,8 +10,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { TeacherShell } from "@/components/teacher/TeacherShell";
+import { useCatalog } from "@/context/CatalogContext";
 import {
-  classes,
   draftMaterials,
   studentsNeedingSupport,
   summarizeClass,
@@ -23,6 +23,7 @@ export const Route = createFileRoute("/teacher/")({
 });
 
 function TeacherOverview() {
+  const { classes } = useCatalog();
   const summaries = classes.map(summarizeClass);
   const supportAlerts = studentsNeedingSupport(5);
   const drafts = draftMaterials();

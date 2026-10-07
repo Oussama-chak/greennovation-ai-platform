@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Dict, List, Any, Optional
-from langchain_groq import ChatGroq
+from ai.llm import chat_model
 import json
 from json import JSONDecodeError
 from ai.state.agent_context import AgentContext
@@ -11,9 +11,8 @@ from ai.agents.energy.metrics import learning_cache_hit_deltas, merge_metric_del
 # LLM (ENERGY-AWARE)
 # ---------------------------------------------------------------------------
 
-def get_llm(energy: dict) -> ChatGroq:
-    return ChatGroq(
-        model="llama-3.1-8b-instant",
+def get_llm(energy: dict):
+    return chat_model(
         temperature=energy.get("temperature", 0.3),
         max_tokens=energy.get("max_tokens", 500),
     )
@@ -201,13 +200,13 @@ _LENGTH_MAP: Dict[tuple, str] = {
     ("short", "plan"):                   "Bullet-point plan, max 5 items, each one line.",
     # medium
     ("medium", "exercise"):              "Mix short recall answers (1 sentence) with medium application answers (2-3 sentences).",
-    ("medium", "explanation"):           "Balanced: intuition first, then 1 example, then 1 takeaway.",
+    ("medium", "explanation"):           "Tight: 1 short intro, at most 3 short sections, 1 small code sample, 1 takeaway. No long lecture.",
     ("medium", "summary_with_questions"): "Short paragraph summary then 3 questions with 2-sentence answers.",
     ("medium", "explanation_with_questions"): "Clear explanation then 2 practice questions with 2-3 sentence answers.",
     ("medium", "plan"):                  "Structured plan with sections and brief rationale per step.",
     # long
     ("long", "exercise"):                "Rich answers with full reasoning. Analysis questions should be dominant.",
-    ("long", "explanation"):             "Full explanation: concept → example → edge case → summary.",
+    ("long", "explanation"):             "Managed depth: concept → 1 example → optional edge case → takeaway. Max 5 short sections. Prefer bullets over many tables.",
     ("long", "summary_with_questions"):  "Detailed summary then 3 in-depth questions with thorough answers.",
     ("long", "explanation_with_questions"): "Detailed explanation with examples then 2 deep questions with full reasoning.",
     ("long", "plan"):                    "Comprehensive plan with rationale, milestones, and tips per phase.",
@@ -232,54 +231,112 @@ _QUESTION_TAXONOMY: Dict[str, tuple] = {
 }
 
 
-def _build_exercise_instruction(difficulty: str, generate_quiz: bool) -> str:
+def _wants_multiple_choice(query: str) -> bool:
+    q = (query or "").lower()
+    return "multiple-choice" in q or "multiple choice" in q or "mcq" in q
+
+
+def _build_exercise_instruction(difficulty: str, generate_quiz: bool, *, multiple_choice: bool = False) -> str:
     if not generate_quiz:
         return (
             "Explain the concept instead of generating questions "
             "(energy-saving mode)."
         )
 
-    q_type, ans_length = _QUESTION_TAXONOMY.get(
-        difficulty, ("application", "2-3 sentences")
-    )
+    level = difficulty if difficulty in _QUESTION_TAXONOMY else "medium"
+    q_type, ans_length = _QUESTION_TAXONOMY[level]
+
+    # Adaptive: all questions stay at the readiness/energy-calibrated level.
+    # Do NOT mix easy/medium/hard in one quiz.
+    level_guidance = {
+        "easy": (
+            "Keep every question at RECALL level — short facts, definitions, "
+            "or direct lookups from the material. No multi-step reasoning."
+        ),
+        "medium": (
+            "Keep every question at APPLICATION level — apply a concept to a "
+            "concrete scenario from the material. Avoid pure recall and deep analysis."
+        ),
+        "hard": (
+            "Keep every question at ANALYSIS level — reasoning, comparison, "
+            "trade-offs, or evaluation grounded in the material."
+        ),
+    }[level]
+
+    if multiple_choice:
+        return f"""
+Generate EXACTLY 3 multiple-choice questions grounded in the course context.
+ALL three questions must be difficulty "{level}" ({q_type}).
+{level_guidance}
+Do NOT include easy/medium/hard mixed together — every item uses "difficulty": "{level}".
+
+Each question has EXACTLY 3 options. Exactly one option is correct.
+The other two must be plausible but wrong.
+
+Return ONLY valid JSON — no preamble, no markdown fences:
+[
+  {{
+    "question": "...",
+    "options": ["first choice", "second choice", "third choice"],
+    "answer": "second choice",
+    "difficulty": "{level}",
+    "question_type": "{q_type}"
+  }},
+  {{
+    "question": "...",
+    "options": ["first choice", "second choice", "third choice"],
+    "answer": "first choice",
+    "difficulty": "{level}",
+    "question_type": "{q_type}"
+  }},
+  {{
+    "question": "...",
+    "options": ["first choice", "second choice", "third choice"],
+    "answer": "third choice",
+    "difficulty": "{level}",
+    "question_type": "{q_type}"
+  }}
+]
+
+Rules:
+- "answer" must be copied exactly from that question's options. Do not use A, B, or C.
+- Do not prefix options with letters.
+- Use ONLY the provided context. No text outside the JSON array.
+"""
 
     return f"""
-Generate EXACTLY 3 questions that progress in cognitive depth:
-  1. A RECALL question   — tests memory of a key fact
-  2. An APPLICATION question — applies the concept to a scenario
-  3. An ANALYSIS question  — requires reasoning, comparison, or evaluation
+Generate EXACTLY 3 questions at difficulty "{level}" only (question_type: {q_type}).
+{level_guidance}
+Vary the topics slightly so the three questions are not duplicates, but keep the SAME difficulty for all three.
+Do NOT produce one easy, one medium, and one hard.
 
-Overall difficulty calibration: "{difficulty}" (dominant type: {q_type}).
+Answer length for every question: {ans_length}
 
 Return ONLY valid JSON — no preamble, no markdown fences:
 [
   {{
     "question": "...",
     "answer": "...",
-    "difficulty": "easy",
-    "question_type": "recall",
-    "answer_length_hint": "1 sentence — state the fact directly"
+    "difficulty": "{level}",
+    "question_type": "{q_type}",
+    "answer_length_hint": "{ans_length}"
   }},
   {{
     "question": "...",
     "answer": "...",
-    "difficulty": "medium",
-    "question_type": "application",
-    "answer_length_hint": "2-3 sentences — apply the concept to a concrete scenario"
+    "difficulty": "{level}",
+    "question_type": "{q_type}",
+    "answer_length_hint": "{ans_length}"
   }},
   {{
     "question": "...",
     "answer": "...",
-    "difficulty": "{difficulty}",
+    "difficulty": "{level}",
     "question_type": "{q_type}",
     "answer_length_hint": "{ans_length}"
   }}
 ]
 
-Per-question answer rules:
-- recall      → {_QUESTION_TAXONOMY['easy'][1]}
-- application → {_QUESTION_TAXONOMY['medium'][1]}
-- analysis    → {_QUESTION_TAXONOMY['hard'][1]}
 Use ONLY the provided context. No text outside the JSON array.
 """
 
@@ -327,7 +384,11 @@ def build_prompt(state: AgentContext) -> str:
 
     # ---- task instruction ----
     if answer_type == "exercise":
-        task_instruction = _build_exercise_instruction(difficulty, generate_quiz)
+        task_instruction = _build_exercise_instruction(
+            difficulty,
+            generate_quiz,
+            multiple_choice=_wants_multiple_choice(query),
+        )
 
     elif answer_type == "summary_with_questions":
         task_instruction = """
@@ -352,7 +413,19 @@ Provide:
         task_instruction = "Provide a structured study plan."
 
     else:
-        task_instruction = "Provide a clear explanation with examples."
+        task_instruction = """
+Provide a clear, managed explanation in markdown the student can skim in chat.
+Structure (keep it short):
+1. One-sentence answer to the question
+2. At most 3 short ## sections (or bullets) — only what they asked
+3. At most one small fenced code example (≤8 lines) when useful
+4. One-line takeaway
+
+Rules:
+- Do NOT write a textbook chapter or long multi-section tour.
+- Avoid markdown tables unless comparing ≤4 rows; prefer bullets.
+- Do NOT return a JSON object (no key_concepts / introduction / takeaway wrappers).
+"""
 
     # ---- apply chip hint ----
     ph     = state.get("prompt_hint")
@@ -367,6 +440,8 @@ PERSONALIZATION CONTRACT:
 4. If STUDENT STATE conflicts with TEACHING STYLE, prefer STUDENT STATE.
 5. Use HISTORY for continuity (same topic → build on prior turns, avoid repeating basics unnecessarily).
 6. Do not mention Digital Twin, profile agent, readiness, or internal labels.
+7. For explanations/summaries: never dump the whole answer as JSON — use markdown only.
+8. Keep chat answers skimmable: short sections, few code blocks, almost no tables.
 """.strip()
 
     return f"""
@@ -458,11 +533,30 @@ _QUESTION_DEFAULTS = {
 }
 
 
+def _normalize_mcq_answer(question: dict) -> None:
+    options = question.get("options")
+    if not isinstance(options, list):
+        return
+    cleaned = [str(option).strip() for option in options if str(option).strip()]
+    question["options"] = cleaned[:3]
+    answer = str(question.get("answer") or "").strip()
+    letter = {"A": 0, "B": 1, "C": 2}.get(answer.upper())
+    if letter is not None and letter < len(question["options"]):
+        question["answer"] = question["options"][letter]
+        return
+    for option in question["options"]:
+        if option.lower() == answer.lower():
+            question["answer"] = option
+            return
+
+
 def _normalize_questions(questions: list) -> list:
     """Guarantee every question dict has all expected fields."""
     for q in questions:
-        for key, default in _QUESTION_DEFAULTS.items():
-            q.setdefault(key, default)
+        if isinstance(q, dict):
+            _normalize_mcq_answer(q)
+            for key, default in _QUESTION_DEFAULTS.items():
+                q.setdefault(key, default)
     return questions
 
 
@@ -552,11 +646,23 @@ def learning_agent(state: AgentContext) -> AgentContext:
             }
 
         # ---- generate ----
+        # Gemini and quiz JSON both need room; a low cap cuts answers mid-sentence.
+        energy = dict(energy)
+        if draft.get("answer_type") == "exercise":
+            floor = 1800 if _wants_multiple_choice(state.get("query", "")) else 1200
+        else:
+            floor = 1200
+        energy["max_tokens"] = max(int(energy.get("max_tokens") or 0), floor)
         llm    = get_llm(energy)
         prompt = build_prompt(state)
 
-        response    = llm.invoke(prompt)
-        answer      = response.content.strip()
+        response = llm.invoke(prompt)
+        content = response.content
+        if isinstance(content, list):
+            content = "".join(
+                part.get("text", "") if isinstance(part, dict) else str(part) for part in content
+            )
+        answer = str(content).strip()
         answer_type = draft.get("answer_type", "explanation")
         parsed      = parse_output(answer, answer_type)
         sources     = format_sources(chunks)

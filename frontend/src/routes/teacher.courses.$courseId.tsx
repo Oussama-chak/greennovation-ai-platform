@@ -1,9 +1,11 @@
 import { Link, createFileRoute, notFound } from "@tanstack/react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   FileSpreadsheet,
   FileText,
   Layers,
+  Loader2,
   Notebook,
   Plus,
   Presentation,
@@ -11,6 +13,8 @@ import {
   Users,
 } from "lucide-react";
 import { TeacherShell } from "@/components/teacher/TeacherShell";
+import { useCatalog } from "@/context/CatalogContext";
+import { fetchCourseUploads, uploadCoursePdf, type CourseUpload } from "@/lib/api";
 import {
   classesForCourse,
   getCourse,
@@ -22,19 +26,104 @@ import {
 export const Route = createFileRoute("/teacher/courses/$courseId")({
   component: CourseDetailPage,
   loader: ({ params }) => {
-    const course = getCourse(params.courseId);
-    if (!course) throw notFound();
-    return { course };
+    // Seed/catalog may still be hydrating; validate id shape only.
+    if (!params.courseId) throw notFound();
+    return { courseId: params.courseId };
   },
 });
 
 function CourseDetailPage() {
-  const { course } = Route.useLoaderData();
-  const courseClasses = classesForCourse(course.id);
-  const totalMaterials = course.chapters.reduce(
-    (sum, chapter) => sum + chapter.materials.length,
-    0,
+  const { courseId } = Route.useLoaderData();
+  const { courses, updateCourses, hydrated } = useCatalog();
+  const course = useMemo(
+    () => courses.find((c) => c.id === courseId) ?? getCourse(courseId),
+    [courses, courseId],
   );
+  const courseClasses = course ? classesForCourse(course.id) : [];
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const chapterTargetRef = useRef<string | null>(null);
+  const [uploads, setUploads] = useState<CourseUpload[]>([]);
+  const [uploadingChapterId, setUploadingChapterId] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!course) return;
+    let cancelled = false;
+    void fetchCourseUploads()
+      .then((rows) => {
+        if (!cancelled) setUploads(rows.filter((row) => row.course_id === course.id));
+      })
+      .catch(() => {
+        if (!cancelled) setUploads([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [course]);
+
+  if (!course) {
+    if (!hydrated) {
+      return (
+        <TeacherShell eyebrow="Course" title="Loading…" description="Fetching the shared catalog.">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading course…
+          </div>
+        </TeacherShell>
+      );
+    }
+    throw notFound();
+  }
+
+  const toggleMaterialStatus = async (chapterId: string, materialId: string) => {
+    const nextCourses = courses.map((c) => {
+      if (c.id !== course.id) return c;
+      return {
+        ...c,
+        chapters: c.chapters.map((ch) => {
+          if (ch.id !== chapterId) return ch;
+          return {
+            ...ch,
+            materials: ch.materials.map((m) => {
+              if (m.id !== materialId) return m;
+              return {
+                ...m,
+                status: m.status === "Published" ? ("Draft" as const) : ("Published" as const),
+              };
+            }),
+          };
+        }),
+      };
+    });
+    await updateCourses(nextCourses);
+  };
+
+  const totalMaterials =
+    course.chapters.reduce((sum, chapter) => sum + chapter.materials.length, 0) +
+    uploads.length;
+
+  const openUpload = (chapterId: string) => {
+    chapterTargetRef.current = chapterId;
+    setUploadError(null);
+    fileInputRef.current?.click();
+  };
+
+  const onPdfSelected = async (file: File | undefined) => {
+    const chapterId = chapterTargetRef.current;
+    if (!file || !chapterId) return;
+    setUploadingChapterId(chapterId);
+    setUploadError(null);
+    try {
+      const saved = await uploadCoursePdf(file, course.id, chapterId);
+      setUploads((current) => [
+        ...current.filter((row) => row.filename.toLowerCase() !== saved.filename.toLowerCase()),
+        saved,
+      ]);
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setUploadingChapterId(null);
+    }
+  };
 
   return (
     <TeacherShell
@@ -58,6 +147,18 @@ function CourseDetailPage() {
         <Stat label="Status" value={course.status} />
       </section>
 
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="application/pdf,.pdf"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          void onPdfSelected(file);
+        }}
+      />
+
       <section className="grid grid-cols-1 xl:grid-cols-3 gap-5">
         <div className="xl:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
@@ -76,7 +177,14 @@ function CourseDetailPage() {
             </button>
           </div>
 
-          {course.chapters.map((chapter) => (
+          {uploadError ? (
+            <p className="text-sm text-destructive">{uploadError}</p>
+          ) : null}
+
+          {course.chapters.map((chapter) => {
+            const chapterUploads = uploads.filter((row) => row.chapter_id === chapter.id);
+            const indexing = uploadingChapterId === chapter.id;
+            return (
             <article
               key={chapter.id}
               className="rounded-3xl bg-card border border-border p-5 shadow-card"
@@ -91,26 +199,36 @@ function CourseDetailPage() {
                 </div>
                 <button
                   type="button"
-                  className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs font-semibold hover:bg-muted whitespace-nowrap"
+                  disabled={indexing}
+                  onClick={() => openUpload(chapter.id)}
+                  className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs font-semibold hover:bg-muted whitespace-nowrap disabled:opacity-60"
                 >
-                  <Upload className="h-3.5 w-3.5" />
-                  Upload
+                  {indexing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                  {indexing ? "Indexing…" : "Upload PDF"}
                 </button>
               </div>
 
-              {chapter.materials.length === 0 ? (
+              {chapter.materials.length === 0 && chapterUploads.length === 0 ? (
                 <p className="text-xs text-muted-foreground mt-4 italic">
-                  No materials yet. Drop a PDF, slide deck, or notes to get started.
+                  No materials yet. Upload a PDF to index it for students.
                 </p>
               ) : (
                 <ul className="mt-4 space-y-2">
                   {chapter.materials.map((material) => (
-                    <MaterialRow key={material.id} material={material} />
+                    <MaterialRow
+                      key={material.id}
+                      material={material}
+                      onToggleStatus={() => void toggleMaterialStatus(chapter.id, material.id)}
+                    />
+                  ))}
+                  {chapterUploads.map((upload) => (
+                    <MaterialRow key={upload.filename} material={materialFromUpload(upload)} />
                   ))}
                 </ul>
               )}
             </article>
-          ))}
+            );
+          })}
         </div>
 
         <div className="space-y-5">
@@ -171,7 +289,27 @@ function CourseDetailPage() {
   );
 }
 
-function MaterialRow({ material }: { material: CourseMaterial }) {
+function materialFromUpload(upload: CourseUpload): CourseMaterial {
+  const kb = upload.size_bytes / 1024;
+  const size = kb >= 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(kb))} KB`;
+  const uploadedAt = upload.uploaded_at.slice(0, 10);
+  return {
+    id: `upload:${upload.filename}`,
+    title: upload.filename,
+    kind: "pdf",
+    size: `${upload.pages} pages · ${size}`,
+    uploadedAt,
+    status: "Published",
+  };
+}
+
+function MaterialRow({
+  material,
+  onToggleStatus,
+}: {
+  material: CourseMaterial;
+  onToggleStatus?: () => void;
+}) {
   const Icon = iconForKind(material.kind);
   return (
     <li className="flex items-center gap-3 rounded-2xl border border-border bg-muted/20 p-3">
@@ -184,15 +322,30 @@ function MaterialRow({ material }: { material: CourseMaterial }) {
           {kindLabel(material.kind)} - {material.size} - Uploaded {material.uploadedAt}
         </div>
       </div>
-      <span
-        className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${
-          material.status === "Published"
-            ? "bg-primary/15 text-primary"
-            : "bg-warning/15 text-warning"
-        }`}
-      >
-        {material.status}
-      </span>
+      {onToggleStatus ? (
+        <button
+          type="button"
+          onClick={onToggleStatus}
+          title={material.status === "Published" ? "Unpublish for students" : "Publish for students"}
+          className={`text-[11px] font-semibold px-2.5 py-1 rounded-full transition hover:opacity-80 ${
+            material.status === "Published"
+              ? "bg-primary/15 text-primary"
+              : "bg-warning/15 text-warning"
+          }`}
+        >
+          {material.status}
+        </button>
+      ) : (
+        <span
+          className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${
+            material.status === "Published"
+              ? "bg-primary/15 text-primary"
+              : "bg-warning/15 text-warning"
+          }`}
+        >
+          {material.status}
+        </span>
+      )}
     </li>
   );
 }

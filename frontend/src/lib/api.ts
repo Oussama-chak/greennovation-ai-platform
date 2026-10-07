@@ -99,6 +99,50 @@ export type CorpusFile = {
   kind: "document" | "rag_index";
 };
 
+export type CourseUpload = {
+  filename: string;
+  slug: string;
+  course_id: string;
+  chapter_id: string;
+  size_bytes: number;
+  pages: number;
+  chunks: number;
+  uploaded_at: string;
+};
+
+export async function fetchCourseUploads(): Promise<CourseUpload[]> {
+  const r = await fetch(`${base}/api/corpus/uploads`);
+  if (!r.ok) {
+    const t = await r.text();
+    throw new Error(t || `${r.status} ${r.statusText}`);
+  }
+  const data = (await r.json()) as { uploads?: CourseUpload[] };
+  return data.uploads ?? [];
+}
+
+export async function uploadCoursePdf(
+  file: File,
+  courseId: string,
+  chapterId: string,
+): Promise<CourseUpload> {
+  const body = new FormData();
+  body.append("file", file);
+  body.append("course_id", courseId);
+  body.append("chapter_id", chapterId);
+  const r = await fetch(`${base}/api/corpus/upload`, { method: "POST", body });
+  if (!r.ok) {
+    let detail = "";
+    try {
+      const data = (await r.json()) as { detail?: string };
+      detail = typeof data.detail === "string" ? data.detail : "";
+    } catch {
+      detail = await r.text();
+    }
+    throw new Error(detail || `${r.status} ${r.statusText}`);
+  }
+  return r.json() as Promise<CourseUpload>;
+}
+
 export async function fetchCorpusFiles(): Promise<{
   data_dir: string;
   files: CorpusFile[];
@@ -137,6 +181,58 @@ export async function saveProjects(projects: Project[]): Promise<void> {
     const t = await r.text();
     throw new Error(t || `${r.status} ${r.statusText}`);
   }
+}
+
+export type CatalogApiPayload = {
+  courses: import("@/data/teacher").TeacherCourse[];
+  classes: import("@/data/teacher").TeacherClass[];
+  students: import("@/data/teacher").TeacherStudent[];
+};
+
+export async function fetchCatalog(): Promise<CatalogApiPayload> {
+  const r = await fetch(`${base}/api/catalog`);
+  if (!r.ok) {
+    const t = await r.text();
+    throw new Error(t || `${r.status} ${r.statusText}`);
+  }
+  return r.json() as Promise<CatalogApiPayload>;
+}
+
+export async function saveCatalog(payload: CatalogApiPayload): Promise<CatalogApiPayload> {
+  const r = await fetch(`${base}/api/catalog`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!r.ok) {
+    const t = await r.text();
+    throw new Error(t || `${r.status} ${r.statusText}`);
+  }
+  return r.json() as Promise<CatalogApiPayload>;
+}
+
+export async function fetchTeacherProjects(): Promise<Project[]> {
+  const r = await fetch(`${base}/api/teacher/projects`);
+  if (!r.ok) {
+    const t = await r.text();
+    throw new Error(t || `${r.status} ${r.statusText}`);
+  }
+  const data = (await r.json()) as { projects: Project[] };
+  return data.projects ?? [];
+}
+
+export async function saveTeacherProjects(projects: Project[]): Promise<Project[]> {
+  const r = await fetch(`${base}/api/teacher/projects`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ projects }),
+  });
+  if (!r.ok) {
+    const t = await r.text();
+    throw new Error(t || `${r.status} ${r.statusText}`);
+  }
+  const data = (await r.json()) as { projects: Project[] };
+  return data.projects ?? [];
 }
 
 export type ReadinessApiResponse = {

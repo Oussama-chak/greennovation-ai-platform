@@ -1,0 +1,34 @@
+{
+  "type": "list",
+  "n": 3,
+  "rows": [
+    {
+      "q": "Which website hosts the free online quizzes mentioned in the book?",
+      "options": [
+        "realpython.com/python-basics/resources",
+        "realpython.com/quizzes/pybasics-first-program",
+        "realpython.com/python-basics/feedback"
+      ],
+      "answer": "realpython.com/quizzes/pybasics-first-program"
+    },
+    {
+      "q": "What is the primary purpose of variables in Python as described in the text?",
+      "options": [
+        "They store the program's source code for later use.",
+        "They keep values accessible so they can be referenced throughout the code.",
+        "They automatically correct syntax errors in the program."
+      ],
+      "answer": "They keep values accessible so they can be referenced throughout the code."
+    },
+    {
+      "q": "Which of the following is NOT listed as a resource for further learning in the book?",
+      "options": [
+        "Writing Comments in Python (Guide)",
+        "11 Beginner Tips for Learning Python Programming",
+        "Advanced Data Structures in Python"
+      ],
+      "answer": "Advanced Data Structures in Python"
+    }
+  ],
+  "errors": []
+}

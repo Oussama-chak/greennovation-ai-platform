@@ -1,5 +1,4 @@
 import { Outlet, createFileRoute } from "@tanstack/react-router";
-import { TeacherProjectsProvider } from "@/context/TeacherProjectsContext";
 
 export const Route = createFileRoute("/teacher")({
   head: () => ({
@@ -16,9 +15,5 @@ export const Route = createFileRoute("/teacher")({
 });
 
 function TeacherLayout() {
-  return (
-    <TeacherProjectsProvider>
-      <Outlet />
-    </TeacherProjectsProvider>
-  );
+  return <Outlet />;
 }

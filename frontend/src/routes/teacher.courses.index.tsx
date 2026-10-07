@@ -1,13 +1,15 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { BookOpen, ChevronRight, FileText, Layers, Plus } from "lucide-react";
 import { TeacherShell } from "@/components/teacher/TeacherShell";
-import { classesForCourse, courses } from "@/data/teacher";
+import { useCatalog } from "@/context/CatalogContext";
+import { classesForCourse } from "@/data/teacher";
 
 export const Route = createFileRoute("/teacher/courses/")({
   component: CoursesList,
 });
 
 function CoursesList() {
+  const { courses } = useCatalog();
   return (
     <TeacherShell
       eyebrow="Courses"

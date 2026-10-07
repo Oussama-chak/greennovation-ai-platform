@@ -2,7 +2,9 @@ import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/r
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import appCss from "../styles.css?url";
+import { CatalogProvider } from "@/context/CatalogContext";
 import { ProjectsProvider } from "@/context/ProjectsContext";
+import { TeacherProjectsProvider } from "@/context/TeacherProjectsContext";
 
 // Create a client for React Query
 const queryClient = new QueryClient({
@@ -87,8 +89,12 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   return (
-    <ProjectsProvider>
-      <Outlet />
-    </ProjectsProvider>
+    <CatalogProvider>
+      <TeacherProjectsProvider>
+        <ProjectsProvider>
+          <Outlet />
+        </ProjectsProvider>
+      </TeacherProjectsProvider>
+    </CatalogProvider>
   );
 }

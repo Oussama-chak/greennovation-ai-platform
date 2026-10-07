@@ -1,13 +1,15 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { ChevronRight, Plus, Users } from "lucide-react";
 import { TeacherShell } from "@/components/teacher/TeacherShell";
-import { classes, summarizeClass } from "@/data/teacher";
+import { useCatalog } from "@/context/CatalogContext";
+import { summarizeClass } from "@/data/teacher";
 
 export const Route = createFileRoute("/teacher/classes/")({
   component: ClassesList,
 });
 
 function ClassesList() {
+  const { classes } = useCatalog();
   const summaries = classes.map(summarizeClass);
 
   return (
