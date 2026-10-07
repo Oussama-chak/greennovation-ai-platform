@@ -26,7 +26,8 @@ import {
   Brain,
   Zap,
 } from "lucide-react";
-import treeSapling from "@/assets/tree-sapling.png";
+import magicBookPandaVideo from "@/assets/magic-book-panda1.webm";
+import magicBookPandaPoster from "@/assets/magic-book-panda.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -367,8 +368,8 @@ function EcoForestCard() {
       <div className="absolute inset-0 opacity-50 pointer-events-none">
         <div className="absolute bottom-0 left-0 right-0 h-2/3 bg-gradient-to-t from-primary/20 to-transparent" />
       </div>
-      <div className="relative">
-        <div className="flex items-center justify-between">
+      <div className="relative flex h-full min-h-[20rem] flex-col">
+        <div className="flex shrink-0 items-center justify-between">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <Trees className="h-4 w-4 text-primary" />
             Knowledge Library
@@ -377,27 +378,33 @@ function EcoForestCard() {
             🔥 4-day streak
           </span>
         </div>
-        <div className="flex items-end justify-center pt-2">
-          <img
-            src={treeSapling}
-            alt="Your growing tree"
-            width={140}
-            height={140}
-            className="h-32 drop-shadow-lg animate-[pulse-soft_3s_ease-in-out_infinite]"
-            loading="lazy"
-          />
+        <div className="magic-book-hero">
+          <div className="magic-book-stage">
+            <span className="magic-book-glow" aria-hidden />
+            <video
+              className="magic-book-art"
+              src={magicBookPandaVideo}
+              poster={magicBookPandaPoster}
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="auto"
+              aria-label="Panda emerging from a glowing storybook"
+            />
+          </div>
         </div>
-        <div className="text-center">
-          <div className="font-display text-2xl font-bold">A world of ideas</div>
+        <div className="shrink-0 text-center">
+          <div className="font-display text-xl font-bold">A world of ideas</div>
           <div className="text-xs text-muted-foreground">Your floating learning sanctuary</div>
+          <Link
+            to="/forest"
+            search={{ reward: undefined }}
+            className="mt-3 inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+          >
+            Explore your library <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
         </div>
-        <Link
-          to="/forest"
-          search={{ reward: undefined }}
-          className="mt-3 flex items-center justify-center gap-1.5 text-xs font-semibold text-primary hover:underline"
-        >
-          Explore your islands <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
       </div>
     </Card>
   );

@@ -98,6 +98,31 @@ const TOTAL_BOOKS = BOOKS_PER_SHELF * SHELF_COUNT;
 const MYSTERY_SLOTS = [25, 51, 77, 103];
 const MYSTERY_THRESHOLDS = [14, 28, 42, 56];
 
+/** Ornate spine + matching incline (3D) cover PNGs in /public/wallOfStories/books */
+const BOOK_ASSETS = [
+  { spine: "spine-burgundy", cover: "cover-burgundy", w: 20 },
+  { spine: "spine-charcoal", cover: "cover-charcoal", w: 20 },
+  { spine: "spine-caramel", cover: "cover-caramel", w: 20 },
+  { spine: "spine-honey", cover: "cover-honey", w: 22 },
+  { spine: "spine-navy", cover: "cover-navy", w: 20 },
+  { spine: "spine-ruby", cover: "cover-ruby", w: 21 },
+  { spine: "spine-amber", cover: "cover-amber", w: 22 },
+  { spine: "spine-turquoise", cover: "cover-turquoise", w: 20 },
+] as const;
+
+function bookAsset(id: number, mystery: boolean) {
+  if (mystery) return BOOK_ASSETS[3]; // honey/gold for mystery
+  return BOOK_ASSETS[id % BOOK_ASSETS.length];
+}
+
+function bookAssetSrc(id: number, mystery: boolean) {
+  return `/wallOfStories/books/${bookAsset(id, mystery).spine}.png`;
+}
+
+function bookCoverSrc(id: number, mystery: boolean) {
+  return `/wallOfStories/books/${bookAsset(id, mystery).cover}.png`;
+}
+
 const QUOTES = [
   "Small steps still count as steps.",
   "You do not need to feel ready to begin.",
@@ -142,8 +167,8 @@ function buildBooks(): WallBook[] {
     const mystery = my > -1;
     const s = SK[(ti * 5 + i) % 6];
     const palette = SUBJ[s][1];
-    // Mix thin paperbacks with thicker hardcovers — flex weights fill the shelf
-    const thick = rnd() > 0.72;
+    const asset = bookAsset(i, mystery);
+    const tall = rnd() > 0.55;
     const b: WallBook = {
       id: i,
       mystery,
@@ -152,8 +177,8 @@ function buildBooks(): WallBook[] {
       c: mystery
         ? ["#c9a84a", "#d4b056", "#b8922e", "#e0c060"][my % 4]
         : palette[Math.floor(rnd() * palette.length)],
-      w: thick ? 28 + Math.floor(rnd() * 16) : 14 + Math.floor(rnd() * 12),
-      h: thick ? 88 + Math.floor(rnd() * 20) : 72 + Math.floor(rnd() * 28),
+      w: asset.w + Math.floor(rnd() * 3),
+      h: tall ? 92 + Math.floor(rnd() * 14) : 78 + Math.floor(rnd() * 14),
       row: Math.floor(i / BOOKS_PER_SHELF),
       col: i % BOOKS_PER_SHELF,
       awake: false,
@@ -577,9 +602,8 @@ export function WallOfStories({
                     }}
                     className={[
                       "wos-book",
-                      `skin-${b.id % 5}`,
+                      "asset",
                       b.mystery ? "m" : "",
-                      b.w >= 28 ? "thick" : "thin",
                       next?.id === b.id ? "next" : "",
                       b.shaking ? "shake" : "",
                     ]
@@ -603,7 +627,15 @@ export function WallOfStories({
                     }
                     onClick={() => setOpenId(b.id)}
                   >
-                    <span className="wos-t">{b.mystery ? "?" : b.title}</span>
+                    <img
+                      className="wos-book-img"
+                      src={bookAssetSrc(b.id, b.mystery)}
+                      alt=""
+                      draggable={false}
+                    />
+                    {b.mystery && !b.awake && (
+                      <span className="wos-t mystery">?</span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -629,10 +661,14 @@ export function WallOfStories({
               ✕
             </button>
             <div
-              className={`wos-cover${openBook.awake ? "" : " sl"}`}
+              className={`wos-cover asset incline${openBook.awake ? "" : " sl"}`}
               style={{ ["--wos-c" as string]: openBook.c } as CSSProperties}
             >
-              {openBook.mystery ? "?" : openBook.title}
+              <img
+                src={bookCoverSrc(openBook.id, openBook.mystery)}
+                alt=""
+                draggable={false}
+              />
             </div>
             <div>
               {openBook.mystery ? (

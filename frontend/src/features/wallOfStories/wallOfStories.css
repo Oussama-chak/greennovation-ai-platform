@@ -394,7 +394,7 @@
   display: flex;
   align-items: flex-end;
   justify-content: stretch;
-  gap: 1px;
+  gap: 0;
   flex-wrap: nowrap;
   width: 100%;
   min-height: calc(100px * var(--wos-u));
@@ -579,6 +579,59 @@
   letter-spacing: 0.02em;
 }
 
+/* Ornate spine PNGs — packed flush edge-to-edge */
+.wos-book.asset {
+  flex: var(--wos-w) 1 0;
+  width: 0;
+  min-width: 0;
+  height: calc(var(--wos-h) * var(--wos-u));
+  margin-left: -1px;
+  border-radius: 0;
+  overflow: hidden;
+  background: transparent;
+  box-shadow: none;
+  filter: grayscale(calc(0.9 * (1 - var(--wos-a))))
+    brightness(calc(0.68 + 0.42 * var(--wos-a)))
+    saturate(calc(0.15 + 1.15 * var(--wos-a)))
+    contrast(calc(0.95 + 0.1 * var(--wos-a)));
+}
+
+.wos-shelf > .wos-book.asset:first-child {
+  margin-left: 0;
+}
+
+.wos-book.asset::before,
+.wos-book.asset::after {
+  display: none;
+}
+
+.wos-book-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.wos-t.mystery {
+  left: 0;
+  right: 0;
+  top: 28%;
+  bottom: auto;
+  height: 1.2em;
+  writing-mode: horizontal-tb;
+  transform: none;
+  font-size: clamp(12px, calc(var(--wos-u) * 16px), 18px);
+  color: #f5e6a8;
+  opacity: 1;
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.8),
+    0 0 6px rgba(0, 0, 0, 0.45);
+}
+
 .wos-book:hover,
 .wos-book:focus-visible {
   transform: translateY(-8px) rotate(-0.8deg);
@@ -586,6 +639,15 @@
   filter: grayscale(calc(0.7 * (1 - var(--wos-a))))
     brightness(calc(0.8 + 0.32 * var(--wos-a)))
     saturate(calc(0.4 + 0.9 * var(--wos-a)))
+    contrast(1.05);
+}
+
+.wos-book.asset:hover,
+.wos-book.asset:focus-visible {
+  transform: translateY(-10px);
+  filter: grayscale(calc(0.55 * (1 - var(--wos-a))))
+    brightness(calc(0.85 + 0.3 * var(--wos-a)))
+    saturate(calc(0.45 + 0.95 * var(--wos-a)))
     contrast(1.05);
 }
 
@@ -614,7 +676,7 @@
   pointer-events: none;
 }
 
-.wos-book.m {
+.wos-book.m:not(.asset) {
   background:
     linear-gradient(
       90deg,
@@ -638,7 +700,7 @@
     var(--wos-c, #c9a03a);
 }
 
-.wos-book.m .wos-t {
+.wos-book.m:not(.asset) .wos-t {
   opacity: 1;
   font-size: clamp(11px, calc(var(--wos-u) * 14px), 16px);
   color: #3d2e0a;
@@ -649,6 +711,11 @@
   animation: wos-pulse 2.2s ease-in-out infinite;
   z-index: 2;
   filter: grayscale(0.15) brightness(1.05) saturate(1.15) contrast(1.05);
+}
+
+.wos-book.asset.next {
+  filter: grayscale(0.08) brightness(1.1) saturate(1.2) contrast(1.05)
+    drop-shadow(0 0 8px rgba(240, 200, 80, 0.8));
 }
 
 @keyframes wos-pulse {
@@ -761,8 +828,45 @@
   box-shadow: 4px 6px 12px oklch(0.3 0.04 160 / 0.25);
 }
 
-.wos-cover.sl {
+.wos-cover.asset {
+  width: 42px;
+  height: 118px;
+  padding: 0;
+  border: none;
+  border-radius: 2px;
+  background: transparent;
+  box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+}
+
+.wos-cover.asset.incline {
+  width: 70px;
+  height: 120px;
+  overflow: visible;
+  box-shadow: none;
+  align-self: center;
+}
+
+.wos-cover.asset img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
+
+.wos-cover.asset.incline img {
+  object-fit: contain;
+  object-position: bottom center;
+  filter: drop-shadow(3px 8px 14px rgba(0, 0, 0, 0.35));
+}
+
+.wos-cover.sl:not(.incline) {
   filter: grayscale(0.85) sepia(0.2) brightness(0.78);
+}
+
+.wos-cover.asset.incline.sl img {
+  filter: grayscale(0.85) sepia(0.15) brightness(0.78)
+    drop-shadow(3px 8px 14px rgba(0, 0, 0, 0.3));
 }
 
 .wos-sheet > div:last-child {
