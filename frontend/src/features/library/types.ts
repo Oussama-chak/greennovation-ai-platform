@@ -1,11 +1,6 @@
-export type LibraryItemType =
-  | "milestone"
-  | "corpus_doc"
-  | "session_summary"
-  | "achievement"
-  | "journal";
-
+export type BookStatus = "sleeping" | "next" | "awake";
 export type BookRarity = "common" | "rare" | "legendary";
+export type RewardKind = "quote" | "fact" | "summary" | "badge" | "decor";
 export type LibraryStage = 1 | 2 | 3;
 export type TimeOfDay = "morning" | "day" | "evening" | "night";
 export type Weather = "clear" | "cloudy" | "rain";
@@ -15,21 +10,38 @@ export type ThemeId =
   | "futuristic-neon"
   | "japanese-study";
 export type QualityTier = "high" | "low" | "none";
-export type DockTab = "library" | "shop" | "collection" | "friends" | "list";
+export type DockTab = "wall" | "collection" | "shop" | "walls" | "list";
 
-export interface LibraryItem {
+export interface BookReward {
+  kind: RewardKind;
+  content: string;
+  decorId?: string;
+}
+
+export interface WallBook {
   id: string;
-  type: LibraryItemType;
+  taskId: string;
   title: string;
   subject: string;
   color: string;
   thickness: number;
-  shelfSlot: number;
-  sourceId?: string;
+  slot: number;
+  status: BookStatus;
+  awakenedAt?: string;
+  dueDate?: string;
+  isMystery?: boolean;
+  reward?: BookReward;
   rarity: BookRarity;
-  onTime?: boolean;
-  summary?: string;
-  unlockedAt: string;
+  /** Large side books that open RAG chat */
+  isCorpus?: boolean;
+  sourceId?: string;
+}
+
+export interface Wall {
+  id: string;
+  projectId: string;
+  title: string;
+  items: WallBook[];
 }
 
 export interface UserLibrary {
@@ -39,9 +51,6 @@ export interface UserLibrary {
   stage: LibraryStage;
   streakDays: number;
   unlockedDecor: string[];
-  /** Progress 0..1 toward next level */
-  levelProgress: number;
-  todaysGoal: string;
 }
 
 export interface Ambience {
@@ -51,19 +60,36 @@ export interface Ambience {
 }
 
 export interface LibrarySnapshot {
-  items: LibraryItem[];
+  walls: Wall[];
+  activeWallId: string;
   user: UserLibrary;
   ambience: Ambience;
 }
 
 export type LibrarySseEvent =
-  | { type: "item_added"; item: LibraryItem; inkAwarded: number }
+  | {
+      type: "awakened";
+      wallId: string;
+      bookId: string;
+      book: WallBook;
+      inkAwarded: number;
+      nextBookId: string | null;
+    }
   | { type: "ambience"; ambience: Ambience }
-  | { type: "level_up"; level: number; stage: LibraryStage };
+  | { type: "stage_up"; stage: LibraryStage };
 
-/** Level bands → room stage */
-export function stageFromLevel(level: number): LibraryStage {
-  if (level >= 8) return 3;
-  if (level >= 4) return 2;
-  return 1;
+export function countAwakened(wall: Wall | null | undefined): number {
+  if (!wall) return 0;
+  return wall.items.filter((b) => b.status === "awake").length;
+}
+
+export function findNextBook(wall: Wall | null | undefined): WallBook | null {
+  if (!wall) return null;
+  const marked = wall.items.find((b) => b.status === "next");
+  if (marked) return marked;
+  return (
+    wall.items
+      .filter((b) => b.status === "sleeping" && !b.isMystery)
+      .sort((a, b) => a.slot - b.slot)[0] ?? null
+  );
 }

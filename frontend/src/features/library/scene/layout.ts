@@ -1,8 +1,8 @@
-import type { LibraryItem } from "../types";
+import type { WallBook } from "../types";
 
 export type BookSlot = {
   index: number;
-  itemId: string;
+  bookId: string;
   x: number;
   y: number;
   z: number;
@@ -27,10 +27,10 @@ export type WallLayoutConfig = {
 
 export const LAYOUT_DEFAULTS: Required<WallLayoutConfig> = {
   booksPerShelf: 10,
-  shelves: 8,
-  shelfWidth: 2.85,
-  shelfHeight: 0.38,
-  shelfDepth: 0.28,
+  shelves: 5,
+  shelfWidth: 2.95,
+  shelfHeight: 0.48,
+  shelfDepth: 0.3,
   baseY: 0.28,
 };
 
@@ -43,33 +43,35 @@ export function hashId(id: string): number {
   return (h >>> 0) / 4294967295;
 }
 
+/** Three-sided reading nook: left · center · right (Image 1 composition). */
 const SECTION_META = [
-  { origin: { x: -1.55, z: 0.45 }, rotY: Math.PI / 2 },
-  { origin: { x: 0, z: -1.35 }, rotY: 0 },
-  { origin: { x: 1.55, z: 0.45 }, rotY: -Math.PI / 2 },
+  { origin: { x: -1.85, z: 0.55 }, rotY: Math.PI / 2.35 },
+  { origin: { x: 0, z: -1.55 }, rotY: 0 },
+  { origin: { x: 1.85, z: 0.55 }, rotY: -Math.PI / 2.35 },
 ] as const;
 
 /**
- * Deterministic U-nook layout from item id / shelfSlot.
- * Fills center wall first, then left/right alcove walls.
+ * Deterministic layout from book id / slot.
+ * Fills center wall first, then left/right wings. Stable across sessions.
  */
 export function layoutBooks(
-  items: LibraryItem[],
+  books: WallBook[],
   config: WallLayoutConfig = {},
 ): BookSlot[] {
   const cfg = { ...LAYOUT_DEFAULTS, ...config };
   const capacity = cfg.booksPerShelf * cfg.shelves * 3;
-  const ordered = [...items]
-    .sort((a, b) => a.shelfSlot - b.shelfSlot)
+  const ordered = [...books]
+    .sort((a, b) => a.slot - b.slot)
     .slice(0, capacity);
 
-  const lanes: LibraryItem[][][] = Array.from({ length: 3 }, () =>
-    Array.from({ length: cfg.shelves }, () => [] as LibraryItem[]),
+  const lanes: WallBook[][][] = Array.from({ length: 3 }, () =>
+    Array.from({ length: cfg.shelves }, () => [] as WallBook[]),
   );
 
+  // Fill center wall first (dense Image-1 look), then spill to left/right wings.
   const centerCap = cfg.booksPerShelf * cfg.shelves;
-  ordered.forEach((item, index) => {
-    const preferred = item.shelfSlot >= 0 ? item.shelfSlot : index;
+  ordered.forEach((book, index) => {
+    const preferred = book.slot >= 0 ? book.slot : index;
     let section: number;
     let shelf: number;
     if (preferred < centerCap) {
@@ -80,10 +82,16 @@ export function layoutBooks(
       section = sideIndex % 2 === 0 ? 0 : 2;
       shelf = Math.floor(sideIndex / 2 / cfg.booksPerShelf) % cfg.shelves;
     }
-    while (lanes[section][shelf].length >= cfg.booksPerShelf && shelf < cfg.shelves - 1) {
+    let guard = 0;
+    while (lanes[section][shelf].length >= cfg.booksPerShelf && guard < 20) {
       shelf += 1;
+      if (shelf >= cfg.shelves) {
+        shelf = 0;
+        section = section === 1 ? 0 : section === 0 ? 2 : 1;
+      }
+      guard += 1;
     }
-    lanes[section][shelf].push(item);
+    lanes[section][shelf].push(book);
   });
 
   const slots: BookSlot[] = [];
@@ -95,21 +103,21 @@ export function layoutBooks(
       const lane = lanes[section][shelf];
       if (!lane.length) continue;
 
-      const widths = lane.map((item) => {
-        const h = hashId(item.id);
-        return Math.min(0.2, Math.max(0.075, item.thickness * 0.9 + h * 0.015));
+      const widths = lane.map((book) => {
+        const h = hashId(book.id);
+        return Math.min(0.22, Math.max(0.07, book.thickness * 0.95 + h * 0.02));
       });
-      const gap = 0.01;
+      const gap = 0.008;
       const totalW =
         widths.reduce((a, b) => a + b, 0) + gap * Math.max(0, lane.length - 1);
-      let cursor = -Math.min(totalW, cfg.shelfWidth - 0.2) / 2;
+      let cursor = -Math.min(totalW, cfg.shelfWidth - 0.18) / 2;
 
-      lane.forEach((item, col) => {
-        const h = hashId(item.id);
+      lane.forEach((book, col) => {
+        const h = hashId(book.id);
         const width = widths[col];
-        const height = 0.26 + h * 0.11;
-        const depth = 0.18 + (1 - h) * 0.07;
-        const tilt = (h - 0.5) * 0.07;
+        const height = 0.28 + h * 0.12;
+        const depth = 0.16 + (1 - h) * 0.08;
+        const tilt = (h - 0.5) * 0.06;
         const along = cursor + width / 2;
         cursor += width + gap;
 
@@ -121,7 +129,7 @@ export function layoutBooks(
 
         slots.push({
           index,
-          itemId: item.id,
+          bookId: book.id,
           x: meta.origin.x + localX * cos + localZ * sin,
           y,
           z: meta.origin.z - localX * sin + localZ * cos,
@@ -142,6 +150,8 @@ export function layoutBooks(
   return slots;
 }
 
-export function findSlot(slots: BookSlot[], itemId: string): BookSlot | undefined {
-  return slots.find((s) => s.itemId === itemId);
+export function findSlot(slots: BookSlot[], bookId: string): BookSlot | undefined {
+  return slots.find((s) => s.bookId === bookId);
 }
+
+export { SECTION_META };

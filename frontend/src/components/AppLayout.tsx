@@ -32,7 +32,7 @@ const navItems = [
   { to: "/learning", label: "Learning", icon: GraduationCap },
   { to: "/community", label: "Community", icon: Users },
   { to: "/wellbeing", label: "Well-being", icon: HeartPulse },
-  { to: "/library", label: "Living Library", icon: Library },
+  { to: "/forest", label: "Knowledge Library", icon: Library },
 ] as const;
 
 export function AppLayout({ children }: { children: ReactNode }) {

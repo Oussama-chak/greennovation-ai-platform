@@ -1,72 +1,111 @@
 import { useMemo } from "react";
-import { makeHerringboneTexture } from "../proceduralTextures";
-import { Shelves } from "../Shelves";
-import { Lanterns } from "../Lanterns";
-import { Ladder } from "../Ladder";
-import { Rug } from "../Rug";
-import { Books } from "../Books";
-import { BookDetail3D } from "../BookDetail3D";
-import { FillerBooks } from "../FillerBooks";
-import { useLibraryStore } from "../../store/libraryStore";
-import { layoutBooks } from "../layout";
+import type { Texture } from "three";
+import { LAYOUT_DEFAULTS, SECTION_META } from "../layout";
+import { herringboneTexture, woodTexture } from "../proceduralTextures";
 
+/**
+ * Stage 1 — Reading Nook (Image 1):
+ * three-sided cream bookcases, warm wood floor, cozy wrap-around shelves.
+ */
 export function NookStage() {
-  const floor = useMemo(() => makeHerringboneTexture(), []);
-  const items = useLibraryStore((s) => s.items);
-  const openItemId = useLibraryStore((s) => s.openItemId);
-  const occupied = useMemo(() => {
-    const set = new Set<string>();
-    for (const slot of layoutBooks(items)) {
-      set.add(`${slot.section}-${slot.shelf}`);
-    }
-    return set;
-  }, [items]);
+  const wood = useMemo(() => woodTexture("#e8d9c0", "#b8a088"), []);
+  const woodDark = useMemo(() => woodTexture("#b9835a", "#6e4a33"), []);
+  const floor = useMemo(() => herringboneTexture(), []);
+
+  const { shelves, shelfWidth, shelfHeight, shelfDepth, baseY } = LAYOUT_DEFAULTS;
 
   return (
     <group>
-      <ambientLight intensity={0.55} color="#f7ead2" />
-      <hemisphereLight args={["#fff1d6", "#5c3a22", 0.65]} />
-      <directionalLight
-        position={[2.2, 4.5, 2.8]}
-        intensity={0.7}
-        color="#ffe0b0"
-        castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
-      />
-      <pointLight position={[0, 2.2, 1.1]} color="#f2b660" intensity={0.5} distance={7} />
-
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0.5]} receiveShadow>
-        <planeGeometry args={[7.5, 6.5]} />
-        <meshStandardMaterial map={floor} roughness={0.62} metalness={0.05} />
+      <mesh rotation-x={-Math.PI / 2} position={[0, 0, 0.4]} receiveShadow>
+        <planeGeometry args={[14, 12]} />
+        <meshStandardMaterial map={floor} roughness={0.75} color="#d4b078" />
       </mesh>
 
-      {/* soft upper vignette */}
-      <mesh position={[0, 3.7, 0.2]} rotation={[Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[7.5, 6.5]} />
-        <meshBasicMaterial color="#2a1a12" transparent opacity={0.28} />
+      <mesh position={[0, 2.4, -2.2]} receiveShadow>
+        <planeGeometry args={[10, 6]} />
+        <meshStandardMaterial color="#f3e9d6" roughness={1} />
       </mesh>
 
-      <Shelves />
-      <Rug />
-      <Lanterns />
-      <Ladder />
-      <FillerBooks occupiedSlots={occupied} />
-      <Books items={items} excludeId={openItemId} />
-      <BookDetail3D />
+      {SECTION_META.map((meta, section) => (
+        <Bookcase
+          key={section}
+          origin={meta.origin}
+          rotY={meta.rotY}
+          shelves={shelves}
+          shelfWidth={shelfWidth}
+          shelfHeight={shelfHeight}
+          shelfDepth={shelfDepth}
+          baseY={baseY}
+          wood={wood}
+          woodDark={woodDark}
+        />
+      ))}
 
-      {/* side table stub */}
-      <group position={[1.2, 0, 1.4]}>
-        <mesh position={[0, 0.26, 0]} castShadow>
-          <cylinderGeometry args={[0.2, 0.24, 0.52, 16]} />
-          <meshStandardMaterial color="#5c3a22" roughness={0.7} />
+      <mesh position={[-1.15, 1.5, -1.35]} castShadow>
+        <boxGeometry args={[0.22, 3.2, 0.22]} />
+        <meshStandardMaterial map={woodDark} color="#e8d9c0" roughness={0.7} />
+      </mesh>
+      <mesh position={[1.15, 1.5, -1.35]} castShadow>
+        <boxGeometry args={[0.22, 3.2, 0.22]} />
+        <meshStandardMaterial map={woodDark} color="#e8d9c0" roughness={0.7} />
+      </mesh>
+    </group>
+  );
+}
+
+function Bookcase({
+  origin,
+  rotY,
+  shelves,
+  shelfWidth,
+  shelfHeight,
+  shelfDepth,
+  baseY,
+  wood,
+  woodDark,
+}: {
+  origin: { x: number; z: number };
+  rotY: number;
+  shelves: number;
+  shelfWidth: number;
+  shelfHeight: number;
+  shelfDepth: number;
+  baseY: number;
+  wood: Texture;
+  woodDark: Texture;
+}) {
+  const height = baseY + shelves * shelfHeight + 0.2;
+  const boards = Array.from({ length: shelves + 1 }, (_, i) => i);
+
+  return (
+    <group position={[origin.x, 0, origin.z]} rotation-y={rotY}>
+      <mesh position={[0, height / 2, -shelfDepth / 2 - 0.02]} receiveShadow>
+        <boxGeometry args={[shelfWidth + 0.2, height, 0.06]} />
+        <meshStandardMaterial map={woodDark} color="#efe4d0" roughness={0.85} />
+      </mesh>
+      {([-1, 1] as const).map((side) => (
+        <mesh
+          key={side}
+          position={[side * (shelfWidth / 2 + 0.04), height / 2, 0]}
+          castShadow
+        >
+          <boxGeometry args={[0.08, height, shelfDepth + 0.08]} />
+          <meshStandardMaterial map={wood} color="#f1e6cc" roughness={0.75} />
         </mesh>
-        <mesh position={[0, 0.58, 0]} castShadow>
-          <cylinderGeometry args={[0.028, 0.032, 0.12, 10]} />
-          <meshStandardMaterial color="#f1e6cc" roughness={0.85} />
-        </mesh>
-        <pointLight position={[0, 0.72, 0]} color="#f2b660" intensity={0.4} distance={2.2} />
-      </group>
+      ))}
+      {boards.map((i) => {
+        const y = baseY + i * shelfHeight;
+        return (
+          <mesh key={i} position={[0, y, 0]} castShadow receiveShadow>
+            <boxGeometry args={[shelfWidth, 0.05, shelfDepth]} />
+            <meshStandardMaterial map={wood} color="#e8d9c0" roughness={0.7} />
+          </mesh>
+        );
+      })}
+      <mesh position={[0, height + 0.06, 0.02]} castShadow>
+        <boxGeometry args={[shelfWidth + 0.28, 0.1, shelfDepth + 0.12]} />
+        <meshStandardMaterial color="#e8d9c0" roughness={0.65} />
+      </mesh>
     </group>
   );
 }

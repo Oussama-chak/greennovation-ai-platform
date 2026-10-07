@@ -1,23 +1,24 @@
 import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import { prefersReducedMotion } from "../lib/quality";
+import { useLibraryStore } from "../store/libraryStore";
 
-const LOOK = new THREE.Vector3(0, 1.1, -0.2);
-const START = new THREE.Vector3(0, 1.5, 5.6);
-const HOME = new THREE.Vector3(0, 1.3, 3.9);
+const START = new THREE.Vector3(0, 1.55, 5.8);
+const REST = new THREE.Vector3(0, 1.65, 4.2);
+const LOOK = new THREE.Vector3(0, 1.35, -0.4);
 
-export function CameraRig() {
+/**
+ * Entrance dolly + gentle parallax / drag-pan / scroll-zoom.
+ */
+export function CameraRig({ reducedMotion }: { reducedMotion?: boolean }) {
   const { camera, gl } = useThree();
-  const reduced = prefersReducedMotion();
-  const yaw = useRef(0);
-  const pitch = useRef(0);
-  const zoom = useRef(0);
-  const dragging = useRef(false);
-  const last = useRef({ x: 0, y: 0 });
-  const pointer = useRef({ x: 0, y: 0 });
   const intro = useRef(0);
-  const breath = useRef(0);
+  const target = useRef(START.clone());
+  const look = useRef(LOOK.clone());
+  const pointer = useRef({ x: 0, y: 0 });
+  const drag = useRef({ active: false, lx: 0, ly: 0, yaw: 0, pitch: 0 });
+  const zoom = useRef(1);
+  const focusBookId = useLibraryStore((s) => s.focusBookId);
 
   useEffect(() => {
     camera.position.copy(START);
@@ -26,71 +27,104 @@ export function CameraRig() {
 
   useEffect(() => {
     const el = gl.domElement;
-    const onDown = (e: PointerEvent) => {
-      dragging.current = true;
-      last.current = { x: e.clientX, y: e.clientY };
+
+    const onPointerMove = (e: PointerEvent) => {
+      const rect = el.getBoundingClientRect();
+      pointer.current.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.current.y = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+
+      if (drag.current.active) {
+        const dx = e.clientX - drag.current.lx;
+        const dy = e.clientY - drag.current.ly;
+        drag.current.lx = e.clientX;
+        drag.current.ly = e.clientY;
+        drag.current.yaw = THREE.MathUtils.clamp(
+          drag.current.yaw - dx * 0.003,
+          -0.55,
+          0.55,
+        );
+        drag.current.pitch = THREE.MathUtils.clamp(
+          drag.current.pitch - dy * 0.002,
+          -0.2,
+          0.25,
+        );
+      }
+    };
+
+    const onPointerDown = (e: PointerEvent) => {
+      drag.current.active = true;
+      drag.current.lx = e.clientX;
+      drag.current.ly = e.clientY;
       el.setPointerCapture(e.pointerId);
     };
-    const onUp = (e: PointerEvent) => {
-      dragging.current = false;
+
+    const onPointerUp = (e: PointerEvent) => {
+      drag.current.active = false;
       try {
         el.releasePointerCapture(e.pointerId);
       } catch {
         /* ignore */
       }
     };
-    const onMove = (e: PointerEvent) => {
-      const rect = el.getBoundingClientRect();
-      pointer.current.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      pointer.current.y = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
-      if (!dragging.current) return;
-      const dx = e.clientX - last.current.x;
-      const dy = e.clientY - last.current.y;
-      last.current = { x: e.clientX, y: e.clientY };
-      yaw.current = THREE.MathUtils.clamp(yaw.current - dx * 0.0035, -0.5, 0.5);
-      pitch.current = THREE.MathUtils.clamp(pitch.current - dy * 0.0025, -0.2, 0.25);
-    };
+
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      zoom.current = THREE.MathUtils.clamp(zoom.current + e.deltaY * 0.0012, -0.8, 1.3);
+      zoom.current = THREE.MathUtils.clamp(
+        zoom.current + e.deltaY * 0.0012,
+        0.75,
+        1.35,
+      );
     };
-    el.addEventListener("pointerdown", onDown);
-    el.addEventListener("pointerup", onUp);
-    el.addEventListener("pointercancel", onUp);
-    el.addEventListener("pointermove", onMove);
+
+    el.addEventListener("pointermove", onPointerMove);
+    el.addEventListener("pointerdown", onPointerDown);
+    el.addEventListener("pointerup", onPointerUp);
+    el.addEventListener("pointercancel", onPointerUp);
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => {
-      el.removeEventListener("pointerdown", onDown);
-      el.removeEventListener("pointerup", onUp);
-      el.removeEventListener("pointercancel", onUp);
-      el.removeEventListener("pointermove", onMove);
+      el.removeEventListener("pointermove", onPointerMove);
+      el.removeEventListener("pointerdown", onPointerDown);
+      el.removeEventListener("pointerup", onPointerUp);
+      el.removeEventListener("pointercancel", onPointerUp);
       el.removeEventListener("wheel", onWheel);
     };
   }, [gl]);
 
-  useFrame((_, delta) => {
-    const dt = Math.min(delta, 0.05);
-    intro.current = Math.min(1, intro.current + dt * 0.45);
-    const ease = 1 - Math.pow(1 - intro.current, 3);
-    if (!reduced) breath.current += dt;
-
-    const base = new THREE.Vector3().lerpVectors(START, HOME, ease);
-    base.z += zoom.current;
-    base.x += Math.sin(yaw.current) * 0.8;
-    base.z += (1 - Math.cos(yaw.current)) * 0.3;
-    base.y += pitch.current * 0.55;
-    if (!reduced) {
-      base.x += pointer.current.x * 0.07;
-      base.y += pointer.current.y * 0.04 + Math.sin(breath.current * 0.7) * 0.018;
+  useFrame((state, dt) => {
+    // Entrance dolly
+    if (intro.current < 1) {
+      intro.current = Math.min(1, intro.current + dt * (reducedMotion ? 2.5 : 0.55));
+      const e = 1 - Math.pow(1 - intro.current, 3);
+      target.current.lerpVectors(START, REST, e);
+    } else {
+      target.current.lerp(REST, 1 - Math.exp(-dt * 2));
     }
-    camera.position.lerp(base, 1 - Math.exp(-dt * 4));
-    const target = LOOK.clone().add(
-      new THREE.Vector3(yaw.current * 0.35, pitch.current * 0.25, 0),
+
+    const breath = reducedMotion
+      ? 0
+      : Math.sin(state.clock.elapsedTime * 0.45) * 0.025;
+    const parallaxX = reducedMotion ? 0 : pointer.current.x * 0.12;
+    const parallaxY = reducedMotion ? 0 : pointer.current.y * 0.06;
+
+    const z = REST.z * zoom.current;
+    const desired = new THREE.Vector3(
+      target.current.x + drag.current.yaw * 0.8 + parallaxX,
+      REST.y + drag.current.pitch * 0.5 + breath + parallaxY * 0.3,
+      z,
     );
-    const dir = new THREE.Vector3();
-    camera.getWorldDirection(dir);
-    const desired = target.clone().sub(camera.position).normalize();
-    camera.lookAt(camera.position.clone().add(dir.lerp(desired, 1 - Math.exp(-dt * 3))));
+
+    // Mild focus pull when a book is highlighted (step 4 will dramatize this)
+    if (focusBookId) {
+      desired.z = THREE.MathUtils.lerp(desired.z, 3.6, 0.35);
+    }
+
+    camera.position.lerp(desired, 1 - Math.exp(-dt * 3.2));
+    look.current.set(
+      LOOK.x + drag.current.yaw * 0.4 + parallaxX * 0.3,
+      LOOK.y + drag.current.pitch * 0.3,
+      LOOK.z,
+    );
+    camera.lookAt(look.current);
   });
 
   return null;

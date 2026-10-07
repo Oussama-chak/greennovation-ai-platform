@@ -1,12 +1,12 @@
 import { useMemo } from "react";
-import { makeRugTexture } from "./proceduralTextures";
+import { rugTexture } from "./proceduralTextures";
 
 export function Rug() {
-  const texture = useMemo(() => makeRugTexture(), []);
+  const map = useMemo(() => rugTexture(), []);
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0.12]} position={[0, 0.012, 0.65]} receiveShadow>
-      <planeGeometry args={[2.2, 1.55]} />
-      <meshStandardMaterial map={texture} roughness={0.9} metalness={0.04} />
+    <mesh rotation-x={-Math.PI / 2} position={[0, 0.015, 0.35]} receiveShadow>
+      <planeGeometry args={[2.8, 2.2]} />
+      <meshStandardMaterial map={map} roughness={0.95} />
     </mesh>
   );
 }

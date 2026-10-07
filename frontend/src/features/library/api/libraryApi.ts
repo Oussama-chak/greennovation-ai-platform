@@ -1,15 +1,16 @@
 import {
   getMockSnapshot,
-  mockAddMilestone,
+  mockAwakenNext,
   mockPurchase,
   mockSetTheme,
 } from "./mock";
 import type {
   Ambience,
-  LibraryItem,
   LibrarySnapshot,
   ThemeId,
   UserLibrary,
+  Wall,
+  WallBook,
 } from "../types";
 
 const USE_MOCK =
@@ -41,10 +42,33 @@ async function apiPost<T>(path: string, body?: unknown): Promise<T> {
 export const libraryApi = {
   useMock: USE_MOCK,
 
+  async getWalls(): Promise<Wall[]> {
+    if (USE_MOCK) return structuredClone(ensureMock().walls);
+    return apiGet<Wall[]>("/library/walls");
+  },
+
+  async getWall(id: string): Promise<Wall> {
+    if (USE_MOCK) {
+      const wall = ensureMock().walls.find((w) => w.id === id);
+      if (!wall) throw new Error("Wall not found");
+      return structuredClone(wall);
+    }
+    return apiGet<Wall>(`/library/walls/${id}`);
+  },
+
   async getSnapshot(): Promise<LibrarySnapshot> {
     if (USE_MOCK) return structuredClone(ensureMock());
-    const data = await apiGet<LibrarySnapshot>("/library");
-    return data;
+    const [walls, ambience, user] = await Promise.all([
+      apiGet<Wall[]>("/library/walls"),
+      apiGet<Ambience>("/library/ambience"),
+      apiGet<UserLibrary>("/library/user"),
+    ]);
+    return {
+      walls,
+      activeWallId: walls[0]?.id ?? "",
+      user,
+      ambience,
+    };
   },
 
   async getAmbience(): Promise<Ambience> {
@@ -52,15 +76,29 @@ export const libraryApi = {
     return apiGet<Ambience>("/library/ambience");
   },
 
-  async simulateMilestone(): Promise<{ item: LibraryItem; inkAwarded: number }> {
+  /** Dev / mock: complete the next sleeping task and awaken its book. */
+  async completeNextTask(): Promise<{
+    book: WallBook;
+    inkAwarded: number;
+    nextBookId: string | null;
+  }> {
     if (USE_MOCK) {
       const session = ensureMock();
-      const result = mockAddMilestone(session.items);
-      session.items.push(result.item);
-      session.user.ink += result.inkAwarded;
+      const result = mockAwakenNext(session);
+      if (!result) throw new Error("No sleeping books waiting to be discovered");
       return result;
     }
-    return apiPost("/library/simulate-milestone");
+    return apiPost("/library/dev/complete-next");
+  },
+
+  async openBook(wallId: string, bookId: string): Promise<WallBook> {
+    if (USE_MOCK) {
+      const wall = ensureMock().walls.find((w) => w.id === wallId);
+      const book = wall?.items.find((b) => b.id === bookId);
+      if (!book) throw new Error("Book not found");
+      return { ...book };
+    }
+    return apiPost<WallBook>(`/library/walls/${wallId}/books/${bookId}/open`);
   },
 
   async setTheme(theme: ThemeId): Promise<UserLibrary> {

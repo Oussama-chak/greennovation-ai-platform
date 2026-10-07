@@ -9,8 +9,7 @@ export function detectQuality(): QualityTier {
   if (typeof document === "undefined") return "none";
   try {
     const canvas = document.createElement("canvas");
-    const gl =
-      canvas.getContext("webgl2") || canvas.getContext("webgl");
+    const gl = canvas.getContext("webgl2") || canvas.getContext("webgl");
     if (!gl) return "none";
     const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
     const renderer = debugInfo

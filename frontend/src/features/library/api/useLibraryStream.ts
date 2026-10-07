@@ -3,34 +3,32 @@ import { libraryApi } from "./libraryApi";
 import { useLibraryStore } from "../store/libraryStore";
 import type { LibrarySseEvent } from "../types";
 
-export function useLibraryStream(enabled = true) {
-  const addItem = useLibraryStore((s) => s.addItem);
+/**
+ * Subscribes to library SSE when not in mock mode.
+ * Mock awakening is driven by the completeNextTask API + store.
+ */
+export function useLibraryStream(enabled: boolean) {
+  const awakenBook = useLibraryStore((s) => s.awakenBook);
   const setAmbience = useLibraryStore((s) => s.setAmbience);
-  const setUser = useLibraryStore((s) => s.setUser);
 
   useEffect(() => {
     if (!enabled || libraryApi.useMock) return;
     const url = libraryApi.streamUrl();
     if (!url) return;
 
-    const source = new EventSource(url);
-    source.onmessage = (event) => {
+    const es = new EventSource(url);
+    es.onmessage = (msg) => {
       try {
-        const data = JSON.parse(event.data) as LibrarySseEvent;
-        if (data.type === "item_added") {
-          addItem(data.item, data.inkAwarded);
-        } else if (data.type === "ambience") {
-          setAmbience(data.ambience);
-        } else if (data.type === "level_up") {
-          const user = useLibraryStore.getState().user;
-          if (user) {
-            setUser({ ...user, level: data.level, stage: data.stage });
-          }
+        const event = JSON.parse(msg.data) as LibrarySseEvent;
+        if (event.type === "awakened") {
+          awakenBook(event.book, event.inkAwarded, event.nextBookId);
+        } else if (event.type === "ambience") {
+          setAmbience(event.ambience);
         }
       } catch {
-        /* ignore */
+        /* ignore malformed events */
       }
     };
-    return () => source.close();
-  }, [enabled, addItem, setAmbience, setUser]);
+    return () => es.close();
+  }, [enabled, awakenBook, setAmbience]);
 }

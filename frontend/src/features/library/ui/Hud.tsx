@@ -1,116 +1,146 @@
-import { Droplets, Flame, Target } from "lucide-react";
+import {
+  BookOpen,
+  Droplets,
+  Flame,
+  LayoutGrid,
+  Layers,
+  List,
+  ShoppingBag,
+} from "lucide-react";
 import { useLibraryStore } from "../store/libraryStore";
+import { countAwakened, findNextBook } from "../types";
 import type { DockTab } from "../types";
+import { ProgressRing } from "./ProgressRing";
 
-const DOCK: { id: DockTab; label: string }[] = [
-  { id: "library", label: "Library" },
-  { id: "shop", label: "Shop" },
-  { id: "collection", label: "Collection" },
-  { id: "friends", label: "Visit friends" },
-  { id: "list", label: "List view" },
-];
-
-type HudProps = {
-  onSimulate?: () => void;
-  simulating?: boolean;
+type Props = {
+  onCompleteNext?: () => void;
+  completing?: boolean;
 };
 
-export function Hud({ onSimulate, simulating }: HudProps) {
+const DOCK: { id: DockTab; label: string; icon: typeof BookOpen }[] = [
+  { id: "wall", label: "Wall", icon: BookOpen },
+  { id: "collection", label: "Collection", icon: LayoutGrid },
+  { id: "shop", label: "Shop", icon: ShoppingBag },
+  { id: "walls", label: "Walls", icon: Layers },
+  { id: "list", label: "List", icon: List },
+];
+
+export function Hud({ onCompleteNext, completing }: Props) {
+  const walls = useLibraryStore((s) => s.walls);
+  const activeWallId = useLibraryStore((s) => s.activeWallId);
   const user = useLibraryStore((s) => s.user);
-  const ambience = useLibraryStore((s) => s.ambience);
-  const items = useLibraryStore((s) => s.items);
   const dockTab = useLibraryStore((s) => s.dockTab);
   const setDockTab = useLibraryStore((s) => s.setDockTab);
+  const setFocusBook = useLibraryStore((s) => s.setFocusBook);
+  const setActiveWall = useLibraryStore((s) => s.setActiveWall);
 
-  if (!user) return null;
+  const wall = walls.find((w) => w.id === activeWallId) ?? null;
+  const awakened = countAwakened(wall);
+  const total = wall?.items.length ?? 0;
+  const next = findNextBook(wall);
 
-  const stageLabel =
-    user.stage === 1 ? "Reading Nook" : user.stage === 2 ? "Study Hall" : "Grand Archive";
+  if (!user || !wall) return null;
 
   return (
     <>
+      {/* Top glass HUD */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-3 p-3 sm:p-4">
-        <div className="pointer-events-auto max-w-[min(100%,420px)] rounded-2xl border border-white/15 bg-[#3a2416]/55 px-3 py-2.5 shadow-lg backdrop-blur-md">
-          <div className="flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-xl bg-[#f2b660]/20 font-serif text-lg text-[#f2b660]">
-              {user.level}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-serif text-lg leading-tight text-[#f1e6cc]">
-                Living Library
-              </p>
-              <p className="text-xs text-[#f1e6cc]/70">
-                {stageLabel} · {items.length} books
-              </p>
-              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/10">
-                <div
-                  className="h-full rounded-full bg-[#f2b660] transition-all duration-500"
-                  style={{ width: `${Math.round(user.levelProgress * 100)}%` }}
-                />
-              </div>
-            </div>
+        <div className="pointer-events-auto flex items-center gap-3 rounded-2xl border border-[#f1e6cc]/15 bg-[#2a1a12]/55 px-3 py-2 shadow-lg backdrop-blur-md">
+          <ProgressRing current={awakened} total={total} size={56} />
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#f2b660]">
+              Wall of Stories
+            </p>
+            <h1 className="font-[Fraunces,serif] text-lg font-bold leading-tight text-[#f1e6cc] sm:text-xl">
+              {wall.title}
+            </h1>
+            <p className="text-xs text-[#f1e6cc]/70">
+              {awakened} / {total} awakened
+            </p>
           </div>
         </div>
 
-        <div className="pointer-events-auto flex items-center gap-2">
-          <div className="flex items-center gap-1.5 rounded-xl border border-white/15 bg-[#3a2416]/55 px-2.5 py-2 text-sm text-[#f1e6cc] backdrop-blur-md">
-            <Droplets className="h-4 w-4 text-[#2f6f73]" />
-            <span className="font-medium tabular-nums">{user.ink}</span>
+        <div className="pointer-events-auto flex flex-col items-end gap-2">
+          <div className="flex items-center gap-2 rounded-full border border-[#f1e6cc]/15 bg-[#2a1a12]/55 px-3 py-1.5 text-sm font-semibold text-[#f1e6cc] backdrop-blur-md">
+            <Droplets className="h-4 w-4 text-[#f2b660]" />
+            {user.ink} Ink
           </div>
-          <div className="flex items-center gap-1.5 rounded-xl border border-white/15 bg-[#3a2416]/55 px-2.5 py-2 text-sm text-[#f1e6cc] backdrop-blur-md">
-            <Flame
-              className="h-4 w-4 text-[#f2b660]"
-              style={{ opacity: 0.35 + (ambience?.candleLevel ?? 0.5) * 0.65 }}
-            />
-            <span className="tabular-nums">{user.streakDays}d</span>
+          <div className="flex items-center gap-1.5 rounded-full border border-[#f1e6cc]/15 bg-[#2a1a12]/55 px-3 py-1.5 text-xs font-semibold text-[#f1e6cc] backdrop-blur-md">
+            <Flame className="h-3.5 w-3.5 text-[#f2b660]" />
+            {user.streakDays}-day streak
           </div>
         </div>
       </div>
 
-      {dockTab === "library" && (
-        <div className="pointer-events-none absolute left-1/2 top-20 z-20 -translate-x-1/2 px-3 sm:top-24">
-          <div className="pointer-events-auto flex max-w-[min(92vw,440px)] items-center gap-2 rounded-full border border-[#d4a537]/40 bg-[#3a2416]/60 px-4 py-2 text-sm text-[#f1e6cc] shadow-lg backdrop-blur-md">
-            <Target className="h-3.5 w-3.5 shrink-0 text-[#f2b660]" />
-            <span className="truncate">
-              Today&apos;s goal:{" "}
-              <span className="font-medium">{user.todaysGoal}</span>
-            </span>
-          </div>
-        </div>
+      {/* Next up chip */}
+      {next && (
+        <button
+          type="button"
+          onClick={() => {
+            setFocusBook(next.id);
+            setDockTab("wall");
+          }}
+          className="absolute left-1/2 top-[5.5rem] z-20 -translate-x-1/2 rounded-full border border-[#f2b660]/45 bg-[#2a1a12]/65 px-4 py-2 text-xs font-semibold text-[#f1e6cc] shadow-lg backdrop-blur-md transition hover:border-[#f2b660] sm:top-24"
+        >
+          <span className="text-[#f2b660]">Next up · </span>
+          {next.title}
+        </button>
       )}
 
-      {dockTab === "library" && (
-        <div className="pointer-events-none absolute right-3 top-24 z-20 sm:right-4 sm:top-28">
-          <button
-            type="button"
-            disabled={simulating}
-            onClick={onSimulate}
-            className="pointer-events-auto rounded-xl border border-[#f2b660]/40 bg-[#f2b660]/15 px-3 py-2 text-xs font-medium text-[#f1e6cc] backdrop-blur-md transition hover:bg-[#f2b660]/25 disabled:opacity-40"
-          >
-            {simulating ? "Shelving…" : "Simulate milestone"}
-          </button>
-        </div>
+      {/* Librarian teaser bubble */}
+      <div className="absolute bottom-24 left-3 z-20 max-w-[220px] rounded-2xl border border-[#f1e6cc]/15 bg-[#2a1a12]/6 px-3 py-2 text-xs leading-relaxed text-[#f1e6cc]/90 backdrop-blur-md sm:left-4">
+        <p className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-[#f2b660]">
+          Librarian
+        </p>
+        The wall is dreaming in soft sepia. Finish a task and a chapter will wake.
+      </div>
+
+      {/* Dev control — step 4 will own the full awakening FX */}
+      {onCompleteNext && (
+        <button
+          type="button"
+          disabled={completing || !next}
+          onClick={onCompleteNext}
+          className="absolute bottom-24 right-3 z-20 rounded-xl border border-[#f2b660]/40 bg-[#f2b660]/15 px-3 py-2 text-xs font-bold text-[#f2b660] backdrop-blur-md transition hover:bg-[#f2b660]/25 disabled:opacity-40 sm:right-4"
+        >
+          {completing ? "Awakening…" : "Dev: complete next task"}
+        </button>
       )}
 
+      {/* Bottom dock */}
       <nav
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center p-3 sm:p-4"
-        aria-label="Library sections"
+        className="absolute inset-x-0 bottom-0 z-20 flex justify-center p-3 sm:p-4"
+        aria-label="Library dock"
       >
-        <div className="pointer-events-auto flex flex-wrap justify-center gap-1 rounded-2xl border border-white/15 bg-[#3a2416]/65 p-1.5 shadow-lg backdrop-blur-md">
-          {DOCK.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setDockTab(item.id)}
-              className={`rounded-xl px-3 py-2 text-xs font-medium transition sm:text-sm ${
-                dockTab === item.id
-                  ? "bg-[#f2b660]/25 text-[#f1e6cc]"
-                  : "text-[#f1e6cc]/75 hover:bg-white/10 hover:text-[#f1e6cc]"
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-1 rounded-2xl border border-[#f1e6cc]/15 bg-[#2a1a12]/7 p-1.5 shadow-xl backdrop-blur-md">
+          {DOCK.map(({ id, label, icon: Icon }) => {
+            const active = dockTab === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => {
+                  if (id === "walls") {
+                    const idx = walls.findIndex((w) => w.id === activeWallId);
+                    const nextWall = walls[(idx + 1) % walls.length];
+                    if (nextWall) setActiveWall(nextWall.id);
+                    setDockTab("wall");
+                    return;
+                  }
+                  setDockTab(id);
+                }}
+                className={`flex min-w-[4.25rem] flex-col items-center gap-0.5 rounded-xl px-2.5 py-2 text-[10px] font-semibold transition sm:min-w-[5rem] ${
+                  active
+                    ? "bg-[#f2b660]/20 text-[#f2b660]"
+                    : "text-[#f1e6cc]/75 hover:bg-[#f1e6cc]/8 hover:text-[#f1e6cc]"
+                }`}
+                aria-current={active ? "page" : undefined}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+              </button>
+            );
+          })}
         </div>
       </nav>
     </>

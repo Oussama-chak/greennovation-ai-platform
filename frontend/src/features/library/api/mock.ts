@@ -1,12 +1,13 @@
 import type {
   Ambience,
-  LibraryItem,
-  LibraryItemType,
+  BookRarity,
+  BookStatus,
   LibrarySnapshot,
   ThemeId,
   UserLibrary,
+  Wall,
+  WallBook,
 } from "../types";
-import { stageFromLevel } from "../types";
 
 const SUBJECT_COLORS: Record<string, string> = {
   Research: "#8b2f3a",
@@ -21,34 +22,63 @@ const SUBJECT_COLORS: Record<string, string> = {
 type Seed = {
   title: string;
   subject: string;
-  type: LibraryItemType;
   effort: number;
-  rarity?: LibraryItem["rarity"];
-  onTime?: boolean;
-  summary?: string;
-  daysAgo: number;
+  status?: BookStatus;
+  isMystery?: boolean;
+  rarity?: BookRarity;
+  isCorpus?: boolean;
+  dueOffset?: number;
+  reward?: WallBook["reward"];
 };
 
-const SEEDS: Seed[] = [
-  { title: "Research question locked in", subject: "Planning", type: "milestone", effort: 2, onTime: true, daysAgo: 28 },
-  { title: "Related-work skim", subject: "Research", type: "milestone", effort: 3, onTime: true, daysAgo: 26 },
-  { title: "Thesis outline v1", subject: "Writing", type: "milestone", effort: 3, onTime: true, daysAgo: 24 },
-  { title: "Methods handbook", subject: "Methods", type: "corpus_doc", effort: 4, rarity: "rare", daysAgo: 22, summary: "Your uploaded methods reference. Ask questions scoped to this document." },
-  { title: "Methodology chosen", subject: "Methods", type: "milestone", effort: 2, onTime: true, daysAgo: 21 },
-  { title: "Seed paper collection", subject: "Research", type: "milestone", effort: 3, daysAgo: 19 },
-  { title: "Focus session — intro draft", subject: "Writing", type: "session_summary", effort: 2, daysAgo: 18, summary: "You clarified the opening argument and left three clean next sentences. Keep the thread warm tomorrow." },
-  { title: "Top-10 annotations", subject: "Research", type: "milestone", effort: 4, onTime: true, daysAgo: 16 },
-  { title: "Introduction draft", subject: "Writing", type: "milestone", effort: 4, daysAgo: 14 },
-  { title: "Literature matrix", subject: "Research", type: "milestone", effort: 3, onTime: true, daysAgo: 12 },
-  { title: "Experiment plan", subject: "Methods", type: "milestone", effort: 3, onTime: true, daysAgo: 10 },
-  { title: "Figures moodboard", subject: "Design", type: "milestone", effort: 2, daysAgo: 9 },
-  { title: "Peer review checkpoint", subject: "Review", type: "milestone", effort: 2, onTime: true, daysAgo: 7 },
-  { title: "7-day streak seal", subject: "Planning", type: "achievement", effort: 2, rarity: "legendary", daysAgo: 5, summary: "A golden seal for showing up seven days in a row. The candle burns a little brighter." },
-  { title: "Mood journal", subject: "Wellbeing", type: "journal", effort: 2, rarity: "rare", daysAgo: 3, summary: "Pages tinted by how you felt this week — soft greens, quiet blues, a few amber evenings." },
-  { title: "Style guide", subject: "Writing", type: "corpus_doc", effort: 3, rarity: "rare", daysAgo: 2, summary: "Corpus document for writing voice and citation style." },
-  { title: "Methods section draft", subject: "Writing", type: "milestone", effort: 4, onTime: true, daysAgo: 1 },
-  { title: "Evening focus — analysis prep", subject: "Methods", type: "session_summary", effort: 2, daysAgo: 0, summary: "You mapped metrics and left a checklist for the next lab hour. Small, solid progress." },
+const THESIS_SEEDS: Seed[] = [
+  { title: "Lock research question", subject: "Planning", effort: 2, status: "awake", reward: { kind: "quote", content: "Clarity is kindness to your future self." } },
+  { title: "Related-work skim", subject: "Research", effort: 3, status: "awake", reward: { kind: "fact", content: "Most literature reviews start too wide — a tight question saves weeks." } },
+  { title: "Thesis outline v1", subject: "Writing", effort: 3, status: "awake", reward: { kind: "summary", content: "You framed three chapters and a clear through-line from problem to contribution." } },
+  { title: "Methods handbook", subject: "Methods", effort: 4, status: "awake", isCorpus: true, rarity: "rare", reward: { kind: "fact", content: "Ask this volume anything — it knows your methods corpus." } },
+  { title: "Choose methodology", subject: "Methods", effort: 2, status: "awake", reward: { kind: "badge", content: "Method Scout" } },
+  { title: "Seed paper collection", subject: "Research", effort: 3, status: "awake" },
+  { title: "Intro focus session", subject: "Writing", effort: 2, status: "awake", reward: { kind: "summary", content: "Opening argument sharpened; three next sentences wait on the desk." } },
+  { title: "Annotate top 10 papers", subject: "Research", effort: 4, status: "awake" },
+  { title: "Draft introduction", subject: "Writing", effort: 4, status: "awake" },
+  { title: "Build literature matrix", subject: "Research", effort: 3, status: "awake" },
+  { title: "Experiment plan", subject: "Methods", effort: 3, status: "awake" },
+  { title: "Figures moodboard", subject: "Design", effort: 2, status: "awake" },
+  { title: "Draft methods section", subject: "Writing", effort: 4, status: "next", dueOffset: 3 },
+  { title: "Pilot data cleanup", subject: "Methods", effort: 3, dueOffset: 5 },
+  { title: "Results skeleton", subject: "Writing", effort: 3, dueOffset: 7 },
+  { title: "Peer review checkpoint", subject: "Review", effort: 2, dueOffset: 8 },
+  { title: "Citation tidy pass", subject: "Research", effort: 2, dueOffset: 9 },
+  { title: "Discussion outline", subject: "Writing", effort: 3, dueOffset: 10 },
+  { title: "Figure polish", subject: "Design", effort: 2, dueOffset: 11 },
+  { title: "Advisor sync notes", subject: "Planning", effort: 1, dueOffset: 4 },
+  { title: "Limitations draft", subject: "Writing", effort: 2, dueOffset: 12 },
+  { title: "Abstract v1", subject: "Writing", effort: 2, dueOffset: 14 },
+  { title: "Related-work synthesis", subject: "Research", effort: 4, dueOffset: 15 },
+  { title: "Ethics checklist", subject: "Planning", effort: 2, dueOffset: 6 },
+  { title: "Dataset documentation", subject: "Methods", effort: 3, dueOffset: 13 },
+  { title: "Baseline experiments", subject: "Methods", effort: 4, dueOffset: 16 },
+  { title: "Ablation notes", subject: "Methods", effort: 3, dueOffset: 18 },
+  { title: "Results tables", subject: "Writing", effort: 3, dueOffset: 19 },
+  { title: "Visual system pass", subject: "Design", effort: 2, dueOffset: 20 },
+  { title: "Conclusion draft", subject: "Writing", effort: 3, dueOffset: 22 },
+  { title: "Style guide", subject: "Writing", effort: 3, isCorpus: true, rarity: "rare", dueOffset: 2 },
+  { title: "Full proofread", subject: "Review", effort: 3, dueOffset: 24 },
+  { title: "Reference polish", subject: "Research", effort: 2, dueOffset: 25 },
+  { title: "Appendix pack", subject: "Writing", effort: 2, dueOffset: 26 },
+  { title: "Defense slides draft", subject: "Design", effort: 3, dueOffset: 28 },
+  { title: "Practice talk", subject: "Planning", effort: 2, dueOffset: 30 },
+  { title: "Mystery: first flame", subject: "Planning", effort: 2, isMystery: true, rarity: "legendary", dueOffset: 99 },
+  { title: "Mystery: halfway light", subject: "Planning", effort: 2, isMystery: true, rarity: "legendary", dueOffset: 99 },
+  { title: "Mystery: wall complete", subject: "Planning", effort: 2, isMystery: true, rarity: "legendary", dueOffset: 99 },
+  { title: "Wellbeing check-in", subject: "Wellbeing", effort: 1, dueOffset: 1 },
 ];
+
+function dueISO(daysAhead: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + daysAhead);
+  return d.toISOString().slice(0, 10);
+}
 
 function isoDaysAgo(days: number): string {
   const d = new Date();
@@ -56,21 +86,65 @@ function isoDaysAgo(days: number): string {
   return d.toISOString();
 }
 
-export function buildMockItems(): LibraryItem[] {
-  return SEEDS.map((seed, i) => ({
-    id: `item-${i + 1}`,
-    type: seed.type,
-    title: seed.title,
-    subject: seed.subject,
-    color: SUBJECT_COLORS[seed.subject] ?? "#8a7c6a",
-    thickness: 0.08 + seed.effort * 0.032,
-    shelfSlot: i,
-    sourceId: seed.type === "corpus_doc" ? `doc-${i + 1}` : undefined,
-    rarity: seed.rarity ?? "common",
-    onTime: seed.onTime,
-    summary: seed.summary,
-    unlockedAt: isoDaysAgo(seed.daysAgo),
-  }));
+function buildThesisWall(): Wall {
+  const items: WallBook[] = THESIS_SEEDS.map((seed, i) => {
+    const status: BookStatus = seed.status ?? "sleeping";
+    return {
+      id: `thesis-book-${i + 1}`,
+      taskId: `task-thesis-${i + 1}`,
+      title: seed.title,
+      subject: seed.subject,
+      color: seed.isMystery ? "#d4a537" : (SUBJECT_COLORS[seed.subject] ?? "#8a7c6a"),
+      thickness: 0.08 + seed.effort * 0.032,
+      slot: i,
+      status,
+      awakenedAt: status === "awake" ? isoDaysAgo(28 - i) : undefined,
+      dueDate: seed.dueOffset !== undefined ? dueISO(seed.dueOffset) : undefined,
+      isMystery: seed.isMystery,
+      reward: seed.reward,
+      rarity: seed.rarity ?? (seed.isMystery ? "legendary" : "common"),
+      isCorpus: seed.isCorpus,
+      sourceId: seed.isCorpus ? `doc-thesis-${i + 1}` : undefined,
+    };
+  });
+
+  return {
+    id: "wall-thesis",
+    projectId: "proj-thesis",
+    title: "Thesis wall",
+    items,
+  };
+}
+
+function buildMethodsWall(): Wall {
+  const titles = [
+    "Lab notebook setup",
+    "Metric definitions",
+    "Pilot run A",
+    "Pilot run B",
+    "Error analysis",
+    "Reproducibility notes",
+    "Code freeze checklist",
+    "Share results with peers",
+  ];
+  return {
+    id: "wall-methods",
+    projectId: "proj-methods",
+    title: "Methods lab wall",
+    items: titles.map((title, i) => ({
+      id: `methods-book-${i + 1}`,
+      taskId: `task-methods-${i + 1}`,
+      title,
+      subject: "Methods",
+      color: SUBJECT_COLORS.Methods,
+      thickness: 0.1 + (i % 3) * 0.03,
+      slot: i,
+      status: (i < 2 ? "awake" : i === 2 ? "next" : "sleeping") as BookStatus,
+      awakenedAt: i < 2 ? isoDaysAgo(4 - i) : undefined,
+      dueDate: dueISO(i + 2),
+      rarity: "common" as const,
+    })),
+  };
 }
 
 export const MOCK_USER: UserLibrary = {
@@ -80,8 +154,6 @@ export const MOCK_USER: UserLibrary = {
   stage: 1,
   streakDays: 5,
   unlockedDecor: ["brass-bookmark"],
-  levelProgress: 0.62,
-  todaysGoal: "Draft two paragraphs of the methods section",
 };
 
 export const MOCK_AMBIENCE: Ambience = {
@@ -91,45 +163,54 @@ export const MOCK_AMBIENCE: Ambience = {
 };
 
 export function getMockSnapshot(): LibrarySnapshot {
+  const walls = [buildThesisWall(), buildMethodsWall()];
   return {
-    items: buildMockItems(),
-    user: {
-      ...MOCK_USER,
-      stage: stageFromLevel(MOCK_USER.level),
-      unlockedDecor: [...MOCK_USER.unlockedDecor],
-    },
+    walls,
+    activeWallId: walls[0].id,
+    user: { ...MOCK_USER, unlockedDecor: [...MOCK_USER.unlockedDecor] },
     ambience: { ...MOCK_AMBIENCE },
   };
 }
 
-const MILESTONE_POOL = [
-  { title: "Pilot data cleaned", subject: "Methods", effort: 3 },
-  { title: "Results skeleton", subject: "Writing", effort: 3 },
-  { title: "Advisor sync notes", subject: "Planning", effort: 1 },
-  { title: "Citation library tidy", subject: "Research", effort: 2 },
-  { title: "Discussion outline", subject: "Writing", effort: 3 },
-  { title: "Figure polish pass", subject: "Design", effort: 2 },
-];
-
-export function mockAddMilestone(items: LibraryItem[]): {
-  item: LibraryItem;
+export function mockAwakenNext(snapshot: LibrarySnapshot): {
+  book: WallBook;
   inkAwarded: number;
-} {
-  const pick = MILESTONE_POOL[items.length % MILESTONE_POOL.length];
-  const item: LibraryItem = {
-    id: `item-${Date.now()}`,
-    type: "milestone",
-    title: pick.title,
-    subject: pick.subject,
-    color: SUBJECT_COLORS[pick.subject] ?? "#8a7c6a",
-    thickness: 0.08 + pick.effort * 0.032,
-    shelfSlot: items.length,
-    rarity: "common",
-    onTime: true,
-    unlockedAt: new Date().toISOString(),
-    summary: "A fresh chapter for your shelf — earned by finishing a milestone.",
-  };
-  return { item, inkAwarded: 20 };
+  nextBookId: string | null;
+} | null {
+  const wall = snapshot.walls.find((w) => w.id === snapshot.activeWallId);
+  if (!wall) return null;
+
+  const target =
+    wall.items.find((b) => b.status === "next") ??
+    wall.items.find((b) => b.status === "sleeping" && !b.isMystery);
+  if (!target) return null;
+
+  target.status = "awake";
+  target.awakenedAt = new Date().toISOString();
+  if (!target.reward) {
+    target.reward = {
+      kind: "quote",
+      content: "Another chapter finds its color. You showed up — that matters.",
+    };
+  }
+
+  const inkAwarded = target.rarity === "legendary" ? 50 : target.rarity === "rare" ? 30 : 20;
+  snapshot.user.ink += inkAwarded;
+
+  wall.items.forEach((b) => {
+    if (b.id !== target.id && b.status === "next") b.status = "sleeping";
+  });
+  const next =
+    wall.items
+      .filter((b) => b.status === "sleeping" && !b.isMystery)
+      .sort((a, b) => a.slot - b.slot)[0] ?? null;
+  if (next) next.status = "next";
+
+  return { book: { ...target }, inkAwarded, nextBookId: next?.id ?? null };
+}
+
+export function mockSetTheme(user: UserLibrary, theme: ThemeId): UserLibrary {
+  return { ...user, theme };
 }
 
 export function mockPurchase(
@@ -144,8 +225,4 @@ export function mockPurchase(
     ink: user.ink - cost,
     unlockedDecor: [...user.unlockedDecor, itemId],
   };
-}
-
-export function mockSetTheme(user: UserLibrary, theme: ThemeId): UserLibrary {
-  return { ...user, theme };
 }

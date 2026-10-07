@@ -431,7 +431,12 @@
 
 .knowledge-page { letter-spacing: 0; }
 .knowledge-page h1, .knowledge-page h2, .knowledge-page h3 { letter-spacing: 0; }
-.knowledge-scene { height: min(64vh, 640px); min-height: 400px; }
+.knowledge-scene {
+  height: min(82vh, 760px);
+  min-height: 560px;
+  display: flex;
+  flex-direction: column;
+}
 .knowledge-scene canvas { touch-action: none; }
 .island-toast { animation: island-arrival .5s ease-out both; }
 @keyframes island-arrival {
@@ -439,7 +444,7 @@
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 @media (max-width: 640px) {
-  .knowledge-scene { height: 460px; min-height: 360px; }
+  .knowledge-scene { height: min(70vh, 560px); min-height: 420px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .island-toast { animation: none; }

@@ -2,99 +2,138 @@ import { create } from "zustand";
 import type {
   Ambience,
   DockTab,
-  LibraryItem,
   LibrarySnapshot,
   QualityTier,
   ThemeId,
   UserLibrary,
+  Wall,
+  WallBook,
 } from "../types";
-import { stageFromLevel } from "../types";
+import { findNextBook } from "../types";
 
-export type DropAnim = { itemId: string; startedAt: number } | null;
+type AwakeningAnim = {
+  bookId: string;
+  startedAt: number;
+} | null;
 
 type LibraryState = {
-  items: LibraryItem[];
+  walls: Wall[];
+  activeWallId: string | null;
   user: UserLibrary | null;
   ambience: Ambience | null;
-  selectedItemId: string | null;
-  hoveredItemId: string | null;
-  openItemId: string | null;
+  selectedBookId: string | null;
+  hoveredBookId: string | null;
+  openBookId: string | null;
+  focusBookId: string | null;
   dockTab: DockTab;
   quality: QualityTier;
-  dropAnim: DropAnim;
+  awakening: AwakeningAnim;
   ready: boolean;
   error: string | null;
+  reducedMotion: boolean;
 
   hydrate: (snapshot: LibrarySnapshot) => void;
-  setSelectedItem: (id: string | null) => void;
-  setHoveredItem: (id: string | null) => void;
-  setOpenItem: (id: string | null) => void;
+  setActiveWall: (wallId: string) => void;
+  setSelectedBook: (id: string | null) => void;
+  setHoveredBook: (id: string | null) => void;
+  setOpenBook: (id: string | null) => void;
+  setFocusBook: (id: string | null) => void;
   setDockTab: (tab: DockTab) => void;
   setQuality: (tier: QualityTier) => void;
   setAmbience: (ambience: Ambience) => void;
-  setUser: (user: UserLibrary) => void;
   setError: (error: string | null) => void;
   setTheme: (theme: ThemeId) => void;
+  setReducedMotion: (value: boolean) => void;
 
-  addItem: (item: LibraryItem, inkAwarded: number) => void;
-  startDrop: (itemId: string) => void;
-  clearDrop: () => void;
+  awakenBook: (book: WallBook, inkAwarded: number, nextBookId: string | null) => void;
+  clearAwakening: () => void;
+
+  activeWall: () => Wall | null;
+  nextBook: () => WallBook | null;
 };
 
-export const useLibraryStore = create<LibraryState>((set) => ({
-  items: [],
+export const useLibraryStore = create<LibraryState>((set, get) => ({
+  walls: [],
+  activeWallId: null,
   user: null,
   ambience: null,
-  selectedItemId: null,
-  hoveredItemId: null,
-  openItemId: null,
-  dockTab: "library",
+  selectedBookId: null,
+  hoveredBookId: null,
+  openBookId: null,
+  focusBookId: null,
+  dockTab: "wall",
   quality: "high",
-  dropAnim: null,
+  awakening: null,
   ready: false,
   error: null,
+  reducedMotion: false,
 
   hydrate: (snapshot) =>
     set({
-      items: snapshot.items,
+      walls: snapshot.walls,
+      activeWallId: snapshot.activeWallId,
       user: snapshot.user,
       ambience: snapshot.ambience,
       ready: true,
       error: null,
     }),
 
-  setSelectedItem: (id) => set({ selectedItemId: id }),
-  setHoveredItem: (id) => set({ hoveredItemId: id }),
-  setOpenItem: (id) => set({ openItemId: id, selectedItemId: id }),
+  setActiveWall: (wallId) =>
+    set({
+      activeWallId: wallId,
+      selectedBookId: null,
+      openBookId: null,
+      hoveredBookId: null,
+    }),
+
+  setSelectedBook: (id) => set({ selectedBookId: id }),
+  setHoveredBook: (id) => set({ hoveredBookId: id }),
+  setOpenBook: (id) => set({ openBookId: id, selectedBookId: id }),
+  setFocusBook: (id) => set({ focusBookId: id }),
   setDockTab: (tab) => set({ dockTab: tab }),
   setQuality: (tier) => set({ quality: tier }),
   setAmbience: (ambience) => set({ ambience }),
-  setUser: (user) => set({ user }),
   setError: (error) => set({ error }),
+  setReducedMotion: (value) => set({ reducedMotion: value }),
 
   setTheme: (theme) =>
     set((s) => (s.user ? { user: { ...s.user, theme } } : s)),
 
-  addItem: (item, inkAwarded) =>
+  awakenBook: (book, inkAwarded, nextBookId) =>
     set((s) => {
-      if (!s.user) return s;
-      const ink = s.user.ink + inkAwarded;
-      let level = s.user.level;
-      let levelProgress = Math.min(1, s.user.levelProgress + 0.18);
-      if (levelProgress >= 1) {
-        level += 1;
-        levelProgress = 0.05;
-      }
-      const stage = stageFromLevel(level);
+      if (!s.user || !s.activeWallId) return s;
+      const walls = s.walls.map((wall) => {
+        if (wall.id !== s.activeWallId) return wall;
+        return {
+          ...wall,
+          items: wall.items.map((b) => {
+            if (b.id === book.id) {
+              return { ...book, status: "awake" as const };
+            }
+            if (b.id === nextBookId) {
+              return { ...b, status: "next" as const };
+            }
+            if (b.status === "next" && b.id !== nextBookId) {
+              return { ...b, status: "sleeping" as const };
+            }
+            return b;
+          }),
+        };
+      });
       return {
-        items: [...s.items, item],
-        user: { ...s.user, ink, level, levelProgress, stage },
-        dropAnim: { itemId: item.id, startedAt: performance.now() },
+        walls,
+        user: { ...s.user, ink: s.user.ink + inkAwarded },
+        awakening: { bookId: book.id, startedAt: performance.now() },
+        focusBookId: book.id,
       };
     }),
 
-  startDrop: (itemId) =>
-    set({ dropAnim: { itemId, startedAt: performance.now() } }),
+  clearAwakening: () => set({ awakening: null }),
 
-  clearDrop: () => set({ dropAnim: null }),
+  activeWall: () => {
+    const s = get();
+    return s.walls.find((w) => w.id === s.activeWallId) ?? null;
+  },
+
+  nextBook: () => findNextBook(get().activeWall()),
 }));
