@@ -44,10 +44,10 @@ export function DailyReward() {
     localStorage.setItem(STORAGE_KEY, todayKey());
     localStorage.setItem(PENDING_REWARD_KEY, "1");
     // Add to inventory (deduped per day) so it shows up on /forest as available.
-    awardTree("daily", "Daily login bonus — plant it in your forest!", todayDedupeKey());
+    awardTree("daily", "Daily activity bonus — a new knowledge seed for your library!", todayDedupeKey());
     setOpen(false);
     if (visit) {
-      navigate({ to: "/forest", search: { reward: 1 } as never });
+      navigate({ to: "/forest", search: { reward: 1 } });
     }
   };
 
@@ -105,7 +105,7 @@ export function DailyReward() {
             <Gift className="h-3 w-3" /> Daily reward
           </div>
           <h2 className="font-display text-2xl font-bold mt-3">
-            You earned a tree today! 🌱
+            A knowledge seed for you! 🌱
           </h2>
           <p className="text-sm text-muted-foreground mt-2 italic leading-relaxed">
             "{quote}"
@@ -114,7 +114,7 @@ export function DailyReward() {
           <div className="flex items-center gap-3 mt-5 rounded-2xl bg-muted/60 p-3 text-left">
             <Panda mood="waving" size={48} className="shrink-0" />
             <p className="text-xs text-foreground/80 leading-snug">
-              Plant it in your Eco Forest and watch it grow from seed to a wonderful tree.
+              Take it to your Knowledge Library and add a new book.
             </p>
           </div>
 
@@ -129,7 +129,7 @@ export function DailyReward() {
               onClick={() => claim(true)}
               className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl gradient-primary text-primary-foreground px-4 py-2.5 text-sm font-bold shadow-glow hover:opacity-95 transition"
             >
-              Check your forest
+              Add a book
               <ArrowRight className="h-4 w-4" />
             </button>
           </div>

@@ -69,6 +69,7 @@ data/
 !frontend/src/data/
 frontend/src/data/*
 !frontend/src/data/teacher.ts
+!frontend/src/data/*.ts
 datasets/
 *.csv
 *.jsonl

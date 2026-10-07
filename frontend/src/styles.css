@@ -58,6 +58,11 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-world-sky: var(--world-sky);
+  --color-world-green: var(--world-green);
+  --color-world-gold: var(--world-gold);
+  --color-world-coral: var(--world-coral);
+  --color-world-ink: var(--world-ink);
 
   --font-display: "Plus Jakarta Sans", system-ui, sans-serif;
   --font-sans: "Inter", system-ui, sans-serif;
@@ -354,6 +359,20 @@
 }
 
 :root {
+  --world-sky: #e8f3f0;
+  --world-green: #37836b;
+  --world-gold: #ecb653;
+  --world-coral: #e78a94;
+  --world-ink: #243f3b;
+  --world-grass: #9ec9a7;
+  --world-rock: #aac4bf;
+  --world-rock-shadow: #799f98;
+  --world-paper: #fff9e9;
+  --world-water: #87ced1;
+  --world-wood: #b9835a;
+  --world-wood-dark: #6e4a33;
+  --world-wall: #f3e9d6;
+  --world-floor: #d9b48c;
   --radius: 1rem;
 
   /* Warm cream background, deep forest text */
@@ -408,6 +427,27 @@
   --sidebar-accent-foreground: oklch(0.3 0.08 165);
   --sidebar-border: oklch(0.9 0.03 140);
   --sidebar-ring: oklch(0.72 0.14 155);
+}
+
+.knowledge-page { letter-spacing: 0; }
+.knowledge-page h1, .knowledge-page h2, .knowledge-page h3 { letter-spacing: 0; }
+.knowledge-scene {
+  height: min(82vh, 760px);
+  min-height: 560px;
+  display: flex;
+  flex-direction: column;
+}
+.knowledge-scene canvas { touch-action: none; }
+.island-toast { animation: island-arrival .5s ease-out both; }
+@keyframes island-arrival {
+  from { opacity: 0; transform: translateY(12px) scale(.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (max-width: 640px) {
+  .knowledge-scene { height: min(70vh, 560px); min-height: 420px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .island-toast { animation: none; }
 }
 
 .dark {
@@ -508,6 +548,132 @@
   .gradient-forest {
     background-image: var(--gradient-forest);
   }
+
+  /* Knowledge Library card — magical panda book */
+  @keyframes magic-book-float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-6px);
+    }
+  }
+  @keyframes magic-book-glow {
+    0%,
+    100% {
+      opacity: 0.45;
+      transform: scale(0.92);
+    }
+    50% {
+      opacity: 0.85;
+      transform: scale(1.08);
+    }
+  }
+  @keyframes magic-sparkle {
+    0%,
+    100% {
+      opacity: 0.15;
+      transform: scale(0.7) rotate(0deg);
+    }
+    40% {
+      opacity: 1;
+      transform: scale(1.15) rotate(25deg);
+    }
+    70% {
+      opacity: 0.4;
+      transform: scale(0.9) rotate(-10deg);
+    }
+  }
+  .magic-book-hero {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 10.5rem;
+    width: 100%;
+    margin: 0.25rem 0 0.5rem;
+  }
+  .magic-book-stage {
+    position: relative;
+    width: min(13.5rem, 72%);
+    aspect-ratio: 1;
+    display: grid;
+    place-items: center;
+    margin-inline: auto;
+  }
+  .magic-book-art {
+    position: relative;
+    z-index: 2;
+    display: block;
+    width: 100%;
+    height: 100%;
+    margin: 0 auto;
+    object-fit: contain;
+    object-position: center center;
+    background: transparent;
+    border: 0;
+    filter: drop-shadow(0 10px 18px oklch(0.45 0.1 155 / 0.28));
+    /* Video carries the motion; keep a soft vertical float */
+    animation: magic-book-float 5.5s ease-in-out infinite;
+    will-change: transform;
+  }
+  .magic-book-glow {
+    position: absolute;
+    z-index: 1;
+    inset: 22% 18% 18% 18%;
+    margin: auto;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle,
+      oklch(0.92 0.14 95 / 0.75) 0%,
+      oklch(0.85 0.12 145 / 0.35) 42%,
+      transparent 70%
+    );
+    animation: magic-book-glow 2.8s ease-in-out infinite;
+    pointer-events: none;
+  }
+  .magic-book-spark {
+    position: absolute;
+    z-index: 3;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 0.1rem;
+    background: oklch(0.92 0.14 95);
+    box-shadow: 0 0 8px oklch(0.9 0.14 95 / 0.8);
+    transform: rotate(45deg);
+    animation: magic-sparkle 2.4s ease-in-out infinite;
+    pointer-events: none;
+  }
+  .magic-book-spark.spark-a {
+    top: 12%;
+    right: 18%;
+    animation-delay: 0s;
+  }
+  .magic-book-spark.spark-b {
+    top: 38%;
+    left: 8%;
+    width: 0.4rem;
+    height: 0.4rem;
+    background: oklch(0.82 0.12 185);
+    box-shadow: 0 0 8px oklch(0.8 0.12 185 / 0.75);
+    animation-delay: 0.7s;
+  }
+  .magic-book-spark.spark-c {
+    bottom: 22%;
+    right: 10%;
+    width: 0.35rem;
+    height: 0.35rem;
+    animation-delay: 1.3s;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .magic-book-art,
+    .magic-book-glow,
+    .magic-book-spark {
+      animation: none !important;
+    }
+  }
+
   .text-gradient-primary {
     background-image: var(--gradient-primary);
     -webkit-background-clip: text;
