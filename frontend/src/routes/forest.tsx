@@ -2,16 +2,45 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AppLayout } from "@/components/AppLayout";
 import { AvatarTip } from "@/components/AvatarTip";
 import { PENDING_REWARD_KEY } from "@/components/DailyReward";
-import { useEffect, useRef, useState, useCallback } from "react";
-import { Trees, Flame, Leaf, Award, Sprout, Sparkles, Gift } from "lucide-react";
-import treeOak from "@/assets/tree-oak.png";
-import { LibraryScene } from "@/components/knowledge/LibraryScene";
-import treePine from "@/assets/tree-pine.png";
-import treeBlossom from "@/assets/tree-blossom.png";
-import treeBamboo from "@/assets/tree-bamboo.png";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  Atom,
+  BookOpen,
+  Compass,
+  Flame,
+  Gift,
+  Library,
+  Minus,
+  Plus,
+  RotateCcw,
+  Sparkles,
+  BookMarked,
+} from "lucide-react";
 import { useTreeInventory } from "@/hooks/useTreeInventory";
 import { useForest, useForestInventory, usePlantTree } from "@/hooks/useForest";
 import { consumeTree } from "@/lib/treeInventory";
+import {
+  ISLANDS,
+  readWorldProgress,
+  totalBooks,
+  writeWorldProgress,
+  islandToTreeKind,
+  treeKindToIsland,
+  type IslandId,
+  type IslandProgress,
+} from "@/lib/knowledgeIslands";
+
+const LibraryScene = lazy(() =>
+  import("@/components/knowledge/LibraryScene").then((m) => ({ default: m.LibraryScene })),
+);
 
 export const Route = createFileRoute("/forest")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -20,167 +49,150 @@ export const Route = createFileRoute("/forest")({
   head: () => ({
     meta: [
       { title: "Knowledge Library — EcoLearn AI" },
-      { name: "description", content: "Build your own 3D library. Every daily lesson and finished project adds a new book to your shelves." },
+      {
+        name: "description",
+        content:
+          "Build your own 3D library. Every daily lesson and finished project adds a new book to your shelves.",
+      },
       { property: "og:title", content: "Knowledge Library — EcoLearn AI" },
-      { property: "og:description", content: "Every reward becomes a book. Watch your personal library grow." },
+      {
+        property: "og:description",
+        content: "Every reward becomes a book. Watch your personal library grow.",
+      },
     ],
   }),
   component: () => (
     <AppLayout>
-      <ForestPage />
+      <KnowledgeLibraryPage />
     </AppLayout>
   ),
 });
 
-type TreeKind = "oak" | "pine" | "blossom" | "bamboo";
-type Tree = {
-  id: number;
-  kind: TreeKind;
-  x: number;
-  y: number;
-  scale: number;
-  growing?: boolean;
-  isBamboo?: boolean;
-};
+const WING_ICONS = {
+  compass: Compass,
+  atom: Atom,
+  book: BookOpen,
+} as const;
 
-const TREE_IMG: Record<TreeKind, string> = {
-  oak: treeOak,
-  pine: treePine,
-  blossom: treeBlossom,
-  bamboo: treeBamboo,
-};
+const PER_WING_CAPACITY = 40;
 
-const PLANT_KINDS: TreeKind[] = ["oak", "pine", "blossom", "bamboo"];
-
-function pickKind(): TreeKind {
-  return PLANT_KINDS[Math.floor(Math.random() * PLANT_KINDS.length)];
+function SceneFallback() {
+  return (
+    <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-world-wall/80 text-world-ink">
+      <Library className="h-10 w-10 animate-pulse text-world-green" />
+      <p className="text-sm font-medium">Opening your library…</p>
+    </div>
+  );
 }
 
-function asTreeKind(kind: string): TreeKind {
-  return PLANT_KINDS.includes(kind as TreeKind) ? (kind as TreeKind) : "oak";
-}
-
-// Pre-planted trees scattered to look like a real forest (back → front).
-const INITIAL_TREES: Tree[] = [
-  { id: 1, kind: "oak", x: 10, y: 50, scale: 0.55 },
-  { id: 2, kind: "blossom", x: 24, y: 48, scale: 0.58 },
-  { id: 3, kind: "pine", x: 38, y: 51, scale: 0.6 },
-  { id: 4, kind: "oak", x: 52, y: 49, scale: 0.56 },
-  { id: 5, kind: "pine", x: 66, y: 50, scale: 0.58 },
-  { id: 6, kind: "blossom", x: 80, y: 48, scale: 0.56 },
-  { id: 7, kind: "oak", x: 92, y: 51, scale: 0.55 },
-  { id: 8, kind: "blossom", x: 14, y: 76, scale: 0.78 },
-  { id: 9, kind: "pine", x: 32, y: 80, scale: 0.82 },
-  { id: 10, kind: "oak", x: 50, y: 78, scale: 0.85 },
-  { id: 11, kind: "blossom", x: 68, y: 80, scale: 0.78 },
-  { id: 12, kind: "pine", x: 86, y: 76, scale: 0.8 },
-];
-
-function ForestPage() {
+function KnowledgeLibraryPage() {
   const { reward } = Route.useSearch();
   const { count: localAvailable } = useTreeInventory();
   const { data: backendForest, isLoading: forestLoading } = useForest();
   const { data: backendInventory } = useForestInventory();
-  const { mutate: plantViaBackend, isPending: backendPlanting } = usePlantTree();
+  const { mutate: plantViaBackend, isPending: backendPlacing } = usePlantTree();
 
   const available = backendInventory?.available ?? localAvailable;
   const backendTrees = backendForest?.trees ?? [];
+  const streakDays = backendForest?.streak_days ?? 4;
 
-  const [trees, setTrees] = useState<Tree[]>(INITIAL_TREES);
-  const [planting, setPlanting] = useState(false);
-  const [growSpot, setGrowSpot] = useState<{ x: number; y: number } | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const [progress, setProgress] = useState<IslandProgress>(() =>
+    typeof window !== "undefined" ? readWorldProgress() : { discovery: 0, logic: 0, imagination: 0 },
+  );
+  const [selected, setSelected] = useState<IslandId>("discovery");
+  const [growth, setGrowth] = useState<IslandId | null>(null);
+  const [placing, setPlacing] = useState(false);
+  const [cameraReset, setCameraReset] = useState(0);
+  const [zoom, setZoom] = useState(1);
+  const [reducedMotion, setReducedMotion] = useState(false);
   const claimedRef = useRef(false);
   const sceneRef = useRef<HTMLElement | null>(null);
 
+  useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReducedMotion(mq.matches);
+    const onChange = () => setReducedMotion(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
   useEffect(() => {
     if (!forestLoading && backendTrees.length > 0) {
-      const convertedTrees: Tree[] = backendTrees.map((t) => ({
-        id: parseInt(t.id.slice(0, 10), 10) || Date.now() + Math.random(),
-        kind: asTreeKind(t.kind),
-        x: t.x,
-        y: t.y,
-        scale: t.scale,
-        growing: false,
-      }));
-      setTrees(INITIAL_TREES.concat(convertedTrees));
+      setProgress((current) => {
+        const localTotal = totalBooks(current);
+        if (backendTrees.length <= localTotal) return current;
+
+        const next = { ...current };
+        backendTrees.slice(localTotal).forEach((t) => {
+          const wing = treeKindToIsland(t.kind);
+          next[wing] = Math.min(PER_WING_CAPACITY, next[wing] + 1);
+        });
+        writeWorldProgress(next);
+        return next;
+      });
     }
   }, [forestLoading, backendTrees]);
 
-  const stats = [
-    {
-      icon: Trees,
-      label: "Trees grown",
-      value: String(trees.length),
-      color: "bg-primary/10 text-primary",
-    },
-    {
-      icon: Gift,
-      label: "Trees to plant",
-      value: String(available),
-      color: "bg-warning/15 text-warning-foreground",
-    },
-    { icon: Flame, label: "Streak", value: "4 days", color: "bg-accent text-accent-foreground" },
-    { icon: Award, label: "Level", value: "Sprout · 3", color: "bg-info/10 text-info" },
-  ];
+  const booksTotal = useMemo(() => totalBooks(progress), [progress]);
+  const selectedWing = ISLANDS.find((w) => w.id === selected)!;
+  const SelectedIcon = WING_ICONS[selectedWing.icon];
 
-  const plantTreeAt = useCallback((x: number, y: number, treekind?: TreeKind) => {
-    const kind = treekind ?? pickKind();
-    const scale = 0.7 + Math.random() * 0.2;
-    const newTree: Tree = {
-      id: Date.now(),
-      kind,
-      x,
-      y,
-      scale,
-      growing: true,
-      isBamboo: kind === "bamboo",
-    };
-    setGrowSpot({ x, y });
-    setTrees((t) => [...t, newTree]);
-    if (typeof window !== "undefined") {
-      requestAnimationFrame(() => {
-        sceneRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      });
-    }
-    setTimeout(() => setGrowSpot(null), 1800);
-    setTimeout(() => {
-      setTrees((t) => t.map((tr) => (tr.id === newTree.id ? { ...tr, growing: false } : tr)));
-      setPlanting(false);
-    }, 2600);
+  const bumpProgress = useCallback((wing: IslandId) => {
+    setProgress((prev) => {
+      if (prev[wing] >= PER_WING_CAPACITY) return prev;
+      const next = { ...prev, [wing]: prev[wing] + 1 };
+      writeWorldProgress(next);
+      return next;
+    });
+    setGrowth(wing);
+    setTimeout(() => setGrowth(null), 2200);
   }, []);
 
-  const plantTree = useCallback(() => {
-    if (planting || backendPlanting) return;
-    if (available <= 0) return;
+  const placeBookOn = useCallback(
+    (wing: IslandId) => {
+      if (placing || backendPlacing) return;
+      if (available <= 0) return;
+      if (progress[wing] >= PER_WING_CAPACITY) return;
 
-    const x = 8 + Math.random() * 84;
-    const y = 60 + Math.random() * 28;
-    const kind = pickKind();
-    setPlanting(true);
+      const kind = islandToTreeKind(wing);
+      const x = 20 + Math.random() * 60;
+      const y = 64 + Math.random() * 22;
+      setPlacing(true);
+      setSelected(wing);
 
-    if (backendInventory) {
-      plantViaBackend(
-        { kind, x, y, scale: 0.7 + Math.random() * 0.2 },
-        {
-          onSuccess: () => {
-            consumeTree();
-            plantTreeAt(x, y, kind);
+      const finish = () => {
+        bumpProgress(wing);
+        setPlacing(false);
+        sceneRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      };
+
+      if (backendInventory) {
+        plantViaBackend(
+          { kind, x, y, scale: 0.75 + Math.random() * 0.15 },
+          {
+            onSuccess: () => {
+              consumeTree();
+              finish();
+            },
+            onError: () => {
+              if (consumeTree()) finish();
+              else setPlacing(false);
+            },
           },
-          onError: () => {
-            if (consumeTree()) {
-              plantTreeAt(x, y, kind);
-            } else {
-              setPlanting(false);
-            }
-          },
-        },
-      );
-    } else if (consumeTree()) {
-      plantTreeAt(x, y, kind);
-    } else {
-      setPlanting(false);
-    }
-  }, [planting, backendPlanting, available, backendInventory, plantViaBackend, plantTreeAt]);
+        );
+      } else if (consumeTree()) {
+        finish();
+      } else {
+        setPlacing(false);
+      }
+    },
+    [placing, backendPlacing, available, progress, backendInventory, plantViaBackend, bumpProgress],
+  );
+
+  const placeBook = useCallback(() => placeBookOn(selected), [placeBookOn, selected]);
 
   useEffect(() => {
     if (claimedRef.current) return;
@@ -189,86 +201,91 @@ function ForestPage() {
     if (reward === 1 && pending === "1" && available > 0) {
       claimedRef.current = true;
       localStorage.removeItem(PENDING_REWARD_KEY);
-
-      const x = 20 + Math.random() * 60;
-      const y = 64 + Math.random() * 22;
-      const kind = pickKind();
-
-      if (backendInventory) {
-        plantViaBackend(
-          { kind, x, y, scale: 0.7 + Math.random() * 0.2 },
-          {
-            onSuccess: () => {
-              consumeTree();
-              setPlanting(true);
-              setTimeout(() => plantTreeAt(x, y, kind), 700);
-            },
-            onError: () => {
-              if (consumeTree()) {
-                setPlanting(true);
-                setTimeout(() => plantTreeAt(x, y, kind), 700);
-              }
-            },
-          },
-        );
-      } else if (consumeTree()) {
-        setPlanting(true);
-        setTimeout(() => plantTreeAt(x, y, kind), 700);
-      }
+      const wing = selected;
+      setTimeout(() => placeBookOn(wing), 600);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reward, available, backendInventory, plantViaBackend, plantTreeAt]);
+  }, [reward, available, selected, placeBookOn]);
 
-  const canPlant = available > 0 && !planting && !backendPlanting;
+  const wingFull = progress[selected] >= PER_WING_CAPACITY;
+  const canPlace = available > 0 && !placing && !backendPlacing && !wingFull;
   const buttonLabel =
-    planting || backendPlanting
-      ? "Planting…"
-      : available > 0
-        ? `Plant a tree (${available})`
-        : "No trees available";
+    placing || backendPlacing
+      ? "Shelving your book…"
+      : available <= 0
+        ? "No books to shelve"
+        : wingFull
+          ? "This wing is full"
+          : `Shelve a book (${available})`;
+
+  const stats = [
+    {
+      icon: BookMarked,
+      label: "Books shelved",
+      value: String(booksTotal),
+      color: "bg-primary/10 text-primary",
+    },
+    {
+      icon: Gift,
+      label: "Ready to shelve",
+      value: String(available),
+      color: "bg-warning/15 text-warning-foreground",
+    },
+    {
+      icon: Flame,
+      label: "Streak",
+      value: `${streakDays} day${streakDays === 1 ? "" : "s"}`,
+      color: "bg-accent text-accent-foreground",
+    },
+    {
+      icon: Sparkles,
+      label: "Library tier",
+      value: booksTotal >= 30 ? "Scholar · 3" : booksTotal >= 10 ? "Reader · 2" : "Curious · 1",
+      color: "bg-info/10 text-info",
+    },
+  ];
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8 animate-[fade-in-up_0.5s_ease-out]">
+    <div className="knowledge-page mx-auto max-w-6xl space-y-6">
+      <div className="mb-8 flex animate-[fade-in-up_0.5s_ease-out] flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="text-xs uppercase tracking-[0.2em] text-primary font-semibold mb-2">
-            Eco Forest
+          <div className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+            Knowledge Library
           </div>
-          <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight leading-snug">
-            Trees are planted one seed at a time;
+          <h1 className="font-display text-2xl font-bold leading-snug tracking-tight sm:text-3xl lg:text-4xl">
+            Every lesson leaves a page;
             <br className="hidden sm:block" />
-            <span className="bg-gradient-to-r from-primary to-success bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-primary to-world-gold bg-clip-text text-transparent">
               {" "}
-              success is built one step at a time.
+              every project fills a shelf.
             </span>
           </h1>
-          <p className="text-muted-foreground mt-3 max-w-xl text-sm sm:text-base">
-            Earn trees by studying daily and completing projects. Each one you plant grows here
-            forever.
+          <p className="mt-3 max-w-xl text-sm text-muted-foreground sm:text-base">
+            Drag to explore your 3D reading room. Choose a wing, then shelve rewards you earn from
+            daily study and completed projects — watch each volume fly from the desk to its place.
           </p>
         </div>
-        <div className="relative group shrink-0">
+        <div className="group relative shrink-0">
           <button
             type="button"
-            onClick={plantTree}
-            disabled={!canPlant}
-            className="inline-flex items-center gap-2 rounded-xl gradient-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold hover:opacity-95 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={placeBook}
+            disabled={!canPlace}
+            className="inline-flex items-center gap-2 rounded-xl gradient-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <Sprout className="h-4 w-4" />
+            <BookOpen className="h-4 w-4" />
             {buttonLabel}
           </button>
-          {available <= 0 && !planting && (
-            <span className="pointer-events-none absolute right-0 top-full mt-2 rounded-lg bg-foreground text-background text-[11px] font-semibold px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition whitespace-nowrap">
-              No trees available — earn one by studying or completing a project
+          {available <= 0 && !placing && (
+            <span className="pointer-events-none absolute right-0 top-full mt-2 whitespace-nowrap rounded-lg bg-foreground px-2.5 py-1.5 text-[11px] font-semibold text-background opacity-0 transition group-hover:opacity-100">
+              Earn a book by studying today or finishing a project
             </span>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {stats.map((s) => (
-          <div key={s.label} className="rounded-2xl bg-card border border-border p-4">
-            <div className={`h-10 w-10 rounded-xl grid place-items-center ${s.color}`}>
+          <div key={s.label} className="rounded-2xl border border-border bg-card p-4">
+            <div className={`grid h-10 w-10 place-items-center rounded-xl ${s.color}`}>
               <s.icon className="h-5 w-5" />
             </div>
             <div className="mt-3 font-display text-2xl font-bold">{s.value}</div>
@@ -277,194 +294,151 @@ function ForestPage() {
         ))}
       </div>
 
-      <section
-        ref={sceneRef}
-        className="rounded-3xl relative overflow-hidden border border-primary/10"
-      >
-        <div
-          className="relative w-full"
-          style={{
-            height: "min(620px, 75vh)",
-            background:
-              "linear-gradient(to bottom, oklch(0.92 0.06 230) 0%, oklch(0.95 0.05 200) 35%, oklch(0.88 0.10 145) 55%, oklch(0.78 0.13 140) 80%, oklch(0.70 0.14 145) 100%)",
-          }}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <section
+          ref={sceneRef}
+          className="knowledge-scene relative overflow-hidden rounded-3xl border border-primary/10 bg-world-wall shadow-soft"
         >
-          <div
-            className="absolute h-20 w-20 rounded-full"
-            style={{
-              top: "8%",
-              right: "10%",
-              background:
-                "radial-gradient(circle, oklch(0.95 0.14 90) 0%, oklch(0.92 0.12 80 / 0.4) 60%, transparent 100%)",
-            }}
-          />
-
-          <svg
-            className="absolute inset-x-0 top-[18%] w-full"
-            viewBox="0 0 1000 120"
-            preserveAspectRatio="none"
-            style={{ height: "12%" }}
-            aria-hidden
-          >
-            <path
-              d="M0,120 L0,70 L120,30 L220,80 L340,20 L460,70 L580,30 L720,80 L860,40 L1000,70 L1000,120 Z"
-              fill="oklch(0.78 0.06 200 / 0.55)"
-            />
-            <path
-              d="M0,120 L0,90 L160,55 L300,90 L440,50 L600,90 L760,60 L900,90 L1000,80 L1000,120 Z"
-              fill="oklch(0.70 0.07 180 / 0.65)"
-            />
-          </svg>
-
-          <svg
-            className="absolute inset-x-0 bottom-0 w-full"
-            viewBox="0 0 1000 220"
-            preserveAspectRatio="none"
-            style={{ height: "55%" }}
-            aria-hidden
-          >
-            <path
-              d="M0,220 L0,80 Q250,20 500,70 T1000,60 L1000,220 Z"
-              fill="oklch(0.82 0.12 145)"
-            />
-            <path
-              d="M0,220 L0,140 Q300,90 600,130 T1000,120 L1000,220 Z"
-              fill="oklch(0.74 0.14 145)"
-            />
-            <path
-              d="M0,220 L0,180 Q350,150 700,175 T1000,170 L1000,220 Z"
-              fill="oklch(0.66 0.15 145)"
-            />
-          </svg>
-
-          {[0, 1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="absolute text-2xl pointer-events-none animate-[leaf-fall_6s_ease-in-out_infinite]"
-              style={{
-                left: `${15 + i * 22}%`,
-                top: 0,
-                animationDelay: `${i * 1.4}s`,
-              }}
-            >
-              🍃
-            </div>
-          ))}
-
-          {growSpot && (
-            <>
-              <div
-                className="absolute pointer-events-none rounded-full"
-                style={{
-                  left: `${growSpot.x}%`,
-                  top: `${growSpot.y}%`,
-                  width: 130,
-                  height: 130,
-                  background:
-                    "radial-gradient(circle, oklch(0.95 0.18 90 / 0.8) 0%, oklch(0.85 0.18 145 / 0.5) 45%, transparent 80%)",
-                  animation: "ground-pulse 1.8s ease-out forwards",
-                  zIndex: 1,
-                  transform: "translate(-50%, -50%)",
-                }}
+          {mounted ? (
+            <Suspense fallback={<SceneFallback />}>
+              <LibraryScene
+                selected={selected}
+                onSelect={setSelected}
+                progress={progress}
+                growth={growth}
+                paused={reducedMotion || placing}
+                reset={cameraReset}
+                zoom={zoom}
               />
-              {Array.from({ length: 12 }).map((_, i) => {
-                const drift = (i % 2 === 0 ? 1 : -1) * (8 + ((i * 7) % 28));
-                const delay = (i * 0.12).toFixed(2);
-                const dur = (1.8 + (i % 4) * 0.35).toFixed(2);
-                return (
-                  <div
-                    key={`p-${i}`}
-                    className="absolute pointer-events-none"
-                    style={{
-                      left: `calc(${growSpot.x}% + ${(i - 6) * 6}px)`,
-                      top: `${growSpot.y}%`,
-                      width: 8,
-                      height: 8,
-                      borderRadius: "9999px",
-                      background:
-                        "radial-gradient(circle, oklch(0.95 0.16 145 / 0.95) 0%, oklch(0.88 0.18 90 / 0.6) 60%, transparent 100%)",
-                      ["--px" as string]: `${drift}px`,
-                      animation: `particle-float ${dur}s ease-out ${delay}s forwards`,
-                      zIndex: 90,
-                    }}
-                  />
-                );
-              })}
-              {Array.from({ length: 5 }).map((_, i) => {
-                const drift = (i % 2 === 0 ? 1 : -1) * (14 + i * 6);
-                const delay = (0.3 + i * 0.18).toFixed(2);
-                return (
-                  <div
-                    key={`l-${i}`}
-                    className="absolute pointer-events-none text-base"
-                    style={{
-                      left: `calc(${growSpot.x}% + ${(i - 2) * 10}px)`,
-                      top: `calc(${growSpot.y}% - 6px)`,
-                      ["--px" as string]: `${drift}px`,
-                      animation: `particle-float ${2.6 + (i % 3) * 0.4}s ease-out ${delay}s forwards`,
-                      opacity: 0.85,
-                      zIndex: 91,
-                    }}
-                  >
-                    🍃
-                  </div>
-                );
-              })}
-            </>
+            </Suspense>
+          ) : (
+            <SceneFallback />
           )}
-
-          {trees.map((t) => {
-            const idleAnim = !t.growing
-              ? `leaf-sway ${4 + (t.id % 5) * 0.5}s ease-in-out ${(t.id % 7) * 0.3}s infinite`
-              : undefined;
-            const growAnim = t.growing
-              ? t.isBamboo
-                ? `bamboo-grow 2.3s cubic-bezier(0.34, 1.2, 0.64, 1) forwards`
-                : `tree-grow 2.4s cubic-bezier(0.34, 1.2, 0.64, 1) forwards`
-              : undefined;
-            return (
-              <img
-                key={t.id}
-                src={TREE_IMG[t.kind]}
-                alt={`${t.kind} tree`}
-                className="absolute pointer-events-none"
-                style={{
-                  left: `${t.x}%`,
-                  top: `${t.y}%`,
-                  transform: `translate(-50%, -100%) scale(${t.scale})`,
-                  transformOrigin: "bottom center",
-                  width: 130,
-                  height: 130,
-                  zIndex: Math.round(t.y),
-                  animation: growAnim ?? idleAnim,
-                }}
-                loading="lazy"
-              />
-            );
-          })}
-
-          <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-50">
-            <div className="rounded-2xl bg-card/80 px-3 py-1.5 border border-border/40">
-              <div className="text-[10px] uppercase tracking-widest font-bold text-primary">
-                Spring grove · 2025
-              </div>
-              <div className="text-xs font-semibold">{trees.length} trees thriving</div>
-            </div>
-            <span className="rounded-full bg-card/80 px-3 py-1.5 text-xs font-semibold border border-border/40 inline-flex items-center gap-1.5">
-              <Sparkles className="h-3 w-3 text-primary" /> Bamboo specialty 🎋
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center pb-3 lg:hidden">
+            <span className="rounded-full bg-card/90 px-3 py-1 text-[10px] font-semibold text-muted-foreground shadow-soft">
+              Drag to look around · Tap a bookcase to select a wing
             </span>
           </div>
-        </div>
-      </section>
+        </section>
+
+        <aside className="flex flex-col gap-3">
+          <div className="rounded-2xl border border-border bg-card p-4">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              <Library className="h-3.5 w-3.5" />
+              Wings
+            </div>
+            <ul className="mt-3 space-y-2">
+              {ISLANDS.map((wing) => {
+                const Icon = WING_ICONS[wing.icon];
+                const active = selected === wing.id;
+                const count = progress[wing.id];
+                return (
+                  <li key={wing.id}>
+                    <button
+                      type="button"
+                      onClick={() => setSelected(wing.id)}
+                      className={`flex w-full items-start gap-3 rounded-xl border px-3 py-2.5 text-left transition ${
+                        active
+                          ? "border-world-green/40 bg-world-green/10"
+                          : "border-transparent hover:border-border hover:bg-muted/50"
+                      }`}
+                    >
+                      <span
+                        className={`mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg ${
+                          active ? "bg-world-green text-primary-foreground" : "bg-muted text-world-ink"
+                        }`}
+                      >
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold">{wing.name}</span>
+                        <span className="block text-[11px] text-muted-foreground">{wing.subject}</span>
+                        <span className="mt-1 block text-xs font-medium text-primary">
+                          {count}/{PER_WING_CAPACITY} books
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+
+          <div
+            className={`island-toast rounded-2xl border border-border bg-card p-4 ${
+              growth === selected ? "ring-2 ring-world-gold/50" : ""
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <SelectedIcon className="h-4 w-4 text-world-green" />
+              <h3 className="font-display text-sm font-bold">{selectedWing.name}</h3>
+            </div>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+              {selectedWing.description}
+            </p>
+            <div className="mt-3 flex items-center justify-between text-[11px] font-semibold">
+              <span className="text-world-ink">Next reward</span>
+              <span className="rounded-full bg-world-gold/20 px-2 py-0.5 text-world-ink">
+                {selectedWing.reward}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => placeBookOn(selected)}
+              disabled={!canPlace}
+              className="mt-3 w-full rounded-xl border border-world-green/30 bg-world-green/10 py-2 text-xs font-semibold text-world-green transition hover:bg-world-green/15 disabled:opacity-50"
+            >
+              Shelve here
+            </button>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-card p-4">
+            <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              View
+            </div>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setCameraReset((n) => n + 1)}
+                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border py-2 text-xs font-semibold hover:bg-muted/60"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Reset
+              </button>
+              <button
+                type="button"
+                onClick={() => setZoom((z) => Math.max(0.8, z - 0.15))}
+                disabled={zoom <= 0.8}
+                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border py-2 text-xs font-semibold hover:bg-muted/60"
+              >
+                <Minus className="h-3.5 w-3.5" />
+                Zoom out
+              </button>
+              <button
+                type="button"
+                onClick={() => setZoom((z) => Math.min(1.6, z + 0.15))}
+                disabled={zoom >= 1.6}
+                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border py-2 text-xs font-semibold hover:bg-muted/60"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Zoom in
+              </button>
+            </div>
+            <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
+              Drag to rotate · Scroll or pinch to zoom · Labels follow each bookcase in 3D
+            </p>
+          </div>
+        </aside>
+      </div>
 
       <AvatarTip
-        mood={planting ? "reading" : "waving"}
+        mood={placing ? "reading" : "waving"}
         message={
-          planting
-            ? "A tiny seed is unfurling into a bamboo tree… watch it grow! 🎋"
+          placing
+            ? "Your new volume is gliding from the desk to the shelf… 📚"
             : available > 0
-              ? `You have ${available} ${available === 1 ? "tree" : "trees"} ready to plant. Tap “Plant a tree” to grow your forest. 🌱`
-              : "No trees in your inventory yet — finish a project or come back tomorrow to earn one. 🌿"
+              ? `You have ${available} ${available === 1 ? "book" : "books"} waiting. Pick a wing and tap “Shelve a book”.`
+              : "No books in your stack yet — finish a project or come back tomorrow for a daily reward. 📖"
         }
       />
     </div>

@@ -141,7 +141,7 @@ export function TreeRewardToast() {
               onClick={() => close(true)}
               className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl gradient-primary text-primary-foreground px-4 py-2.5 text-sm font-bold shadow-glow hover:opacity-95 transition"
             >
-              Check your forest
+              Open your library
               <ArrowRight className="h-4 w-4" />
             </button>
           </div>

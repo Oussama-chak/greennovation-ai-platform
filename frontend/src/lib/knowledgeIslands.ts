@@ -18,3 +18,28 @@ export const ISLANDS = [
       return { ...INITIAL_PROGRESS };
     }
   }
+
+  export function writeWorldProgress(progress: IslandProgress) {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem(WORLD_STORAGE_KEY, JSON.stringify(progress));
+    } catch {
+      /* ignore quota errors */
+    }
+  }
+
+  export function totalBooks(progress: IslandProgress): number {
+    return ISLANDS.reduce((sum, { id }) => sum + progress[id], 0);
+  }
+
+  export function islandToTreeKind(id: IslandId): "oak" | "pine" | "blossom" {
+    if (id === "logic") return "pine";
+    if (id === "imagination") return "blossom";
+    return "oak";
+  }
+
+  export function treeKindToIsland(kind: string): IslandId {
+    if (kind === "pine") return "logic";
+    if (kind === "blossom") return "imagination";
+    return "discovery";
+  }

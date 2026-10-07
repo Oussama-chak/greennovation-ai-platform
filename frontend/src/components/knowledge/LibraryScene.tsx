@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Lightformer, OrbitControls, Sparkles, useCursor } from "@react-three/drei";
 import * as THREE from "three";
@@ -123,7 +123,7 @@ function Room({ palette, wood }: { palette: Palette; wood: THREE.Texture }) {
   </group>;
 }
 
-function LabelTracker({ labels }: { labels: React.RefObject<(HTMLDivElement | null)[]> }) {
+function LabelTracker({ labels }: { labels: RefObject<(HTMLDivElement | null)[]> }) {
   const v = useMemo(() => new THREE.Vector3(), []);
   useFrame(({ camera, size }) => {
     CASE_X.forEach((x, i) => {
@@ -135,12 +135,25 @@ function LabelTracker({ labels }: { labels: React.RefObject<(HTMLDivElement | nu
   return null;
 }
 
-function Controls({ reset, zoom, paused }: { reset: number; zoom: number; paused: boolean }) {
+function Controls({ reset, zoom }: { reset: number; zoom: number }) {
   const { camera } = useThree();
   const ref = useRef<React.ComponentRef<typeof OrbitControls>>(null);
   useEffect(() => { (camera as THREE.PerspectiveCamera).zoom = zoom; camera.updateProjectionMatrix(); }, [camera, zoom]);
   useEffect(() => { ref.current?.reset(); }, [reset]);
-  return <OrbitControls ref={ref} target={[0, 1.6, 0.6]} enablePan={false} enableZoom={false} minAzimuthAngle={-0.6} maxAzimuthAngle={0.6} minPolarAngle={1.0} maxPolarAngle={1.5} enableDamping autoRotate={false} enabled={!paused} />;
+  return (
+    <OrbitControls
+      ref={ref}
+      target={[0, 1.6, 0.6]}
+      enablePan={false}
+      enableZoom
+      minDistance={5.5}
+      maxDistance={13}
+      minPolarAngle={0.65}
+      maxPolarAngle={1.55}
+      enableDamping
+      autoRotate={false}
+    />
+  );
 }
 
 export function LibraryScene({ selected, onSelect, progress, growth, paused, reset, zoom }: { selected: IslandId; onSelect: (id: IslandId) => void; progress: IslandProgress; growth: IslandId | null; paused: boolean; reset: number; zoom: number }) {
@@ -165,7 +178,7 @@ export function LibraryScene({ selected, onSelect, progress, growth, paused, res
     <LabelTracker labels={labels} />
     <Desk palette={palette} wood={wood} growing={growth !== null} paused={paused} />
     {!paused && <Sparkles count={40} scale={[10, 4, 4]} position={[0, 2, 1]} size={2} speed={0.2} opacity={0.5} color={palette.paper} />}
-    <Controls reset={reset} zoom={zoom} paused={paused} />
+    <Controls reset={reset} zoom={zoom} />
   </Canvas>
     {ISLANDS.map((w, i) => <div key={w.id} ref={el => { labels.current[i] = el; }} className={`absolute left-0 top-0 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-semibold shadow-soft pointer-events-none ${selected === w.id ? "bg-world-green text-primary-foreground" : "bg-card/90 text-world-ink"}`}>{w.name} · {progress[w.id]}</div>)}
   </div>;

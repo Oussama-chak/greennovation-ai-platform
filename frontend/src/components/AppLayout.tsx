@@ -5,7 +5,7 @@ import {
   FolderKanban,
   GraduationCap,
   HeartPulse,
-  Trees,
+  Library,
   Sparkles,
   Bell,
   Search,
@@ -32,7 +32,7 @@ const navItems = [
   { to: "/learning", label: "Learning", icon: GraduationCap },
   { to: "/community", label: "Community", icon: Users },
   { to: "/wellbeing", label: "Well-being", icon: HeartPulse },
-  { to: "/forest", label: "Knowledge Library", icon: Trees },
+  { to: "/forest", label: "Knowledge Library", icon: Library },
 ] as const;
 
 export function AppLayout({ children }: { children: ReactNode }) {
