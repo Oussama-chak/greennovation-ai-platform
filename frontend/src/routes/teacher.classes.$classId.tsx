@@ -1,6 +1,8 @@
 import { Link, createFileRoute, notFound } from "@tanstack/react-router";
-import { ArrowLeft, BookOpen, FolderKanban, ListChecks, Mail, MoreHorizontal } from "lucide-react";
+import { useMemo } from "react";
+import { ArrowLeft, BookOpen, FolderKanban, ListChecks, Loader2, Mail, MoreHorizontal } from "lucide-react";
 import { TeacherShell } from "@/components/teacher/TeacherShell";
+import { useCatalog } from "@/context/CatalogContext";
 import { useTeacherProjects } from "@/context/TeacherProjectsContext";
 import {
   getClass,
@@ -14,17 +16,35 @@ import {
 export const Route = createFileRoute("/teacher/classes/$classId")({
   component: ClassDetailPage,
   loader: ({ params }) => {
-    const cls = getClass(params.classId);
-    if (!cls) throw notFound();
-    return { cls };
+    if (!params.classId) throw notFound();
+    return { classId: params.classId };
   },
 });
 
 function ClassDetailPage() {
-  const { cls } = Route.useLoaderData();
+  const { classId } = Route.useLoaderData();
+  const { classes, hydrated } = useCatalog();
+  const cls = useMemo(
+    () => classes.find((c) => c.id === classId) ?? getClass(classId),
+    [classes, classId],
+  );
+  const { projectsForClass } = useTeacherProjects();
+
+  if (!cls) {
+    if (!hydrated) {
+      return (
+        <TeacherShell eyebrow="Class" title="Loading…" description="Fetching the shared catalog.">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading class…
+          </div>
+        </TeacherShell>
+      );
+    }
+    throw notFound();
+  }
+
   const course = getCourse(cls.courseId);
   const summary = summarizeClass(cls);
-  const { projectsForClass } = useTeacherProjects();
   const classProjects = projectsForClass(cls.id);
 
   return (

@@ -14,4 +14,5 @@ def health():
         "data_dir": str(data_dir),
         "data_dir_exists": data_dir.is_dir(),
         "groq_configured": bool(os.environ.get("GROQ_API_KEY")),
+        "groq_model": os.environ.get("GROQ_MODEL") or "openai/gpt-oss-20b",
     }

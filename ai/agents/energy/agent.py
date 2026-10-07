@@ -9,7 +9,7 @@ from ai.agents.energy.metrics import energy_green_deltas, merge_metric_deltas
 
 STANDARD_DECISION: Dict[str, Any] = {
     "mode":                  "balanced",
-    "max_tokens":            400,
+    "max_tokens":            1200,
     "temperature":           0.3,
     "use_rag":               True,
     "top_k":                 5,

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from ai.agents.profile.llm_inference import infer_profile_with_mistral
+from ai.agents.profile.llm_inference import infer_profile
 from ai.agents.profile.features import build_profile_features
 from ai.agents.student_modeling.adapters import (
     energy_signals_from_twin,
@@ -29,7 +29,7 @@ async def profile_agent_node(state: AgentContext) -> AgentContext:
             user_profile=user_profile,
         )
 
-        result = await infer_profile_with_mistral(
+        result = await infer_profile(
             query=query,
             history=session_history[-6:],
             user_profile=user_profile,

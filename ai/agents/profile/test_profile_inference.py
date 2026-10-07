@@ -1,11 +1,11 @@
 # test_profile_inference.py
 import asyncio
 
-from ai.agents.profile.llm_inference import infer_profile_with_mistral
+from ai.agents.profile.llm_inference import infer_profile
 
 
 async def main():
-    result = await infer_profile_with_mistral(
+    result = await infer_profile(
         query="Explain recursion simply with examples, I have an exam tomorrow",
         history=[
             {"role": "user", "content": "I get confused with recursion"},

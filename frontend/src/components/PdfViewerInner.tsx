@@ -13,17 +13,17 @@ export function PdfViewerInner({ url }: { url: string }) {
   const [width, setWidth] = useState(640);
 
   useEffect(() => {
-    const onResize = () => {
-      const el = document.getElementById("pdf-container");
-      if (el) setWidth(Math.min(el.clientWidth - 16, 720));
-    };
-    onResize();
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    const el = document.getElementById("pdf-container");
+    if (!el) return;
+    const measure = () => setWidth(Math.max(240, el.clientWidth - 8));
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
   }, []);
 
   return (
-    <div id="pdf-container" className="rounded-2xl bg-muted/40 border border-border p-2 lg:p-4">
+    <div id="pdf-container" className="w-full">
       <Document
         file={url}
         onLoadSuccess={({ numPages }) => setNumPages(numPages)}

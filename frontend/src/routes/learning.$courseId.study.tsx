@@ -1,7 +1,8 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { WorkspaceSession } from "@/components/workspace/WorkspaceSession";
-import { fetchCorpusFiles } from "@/lib/api";
+import { useCatalog } from "@/context/CatalogContext";
+import { fetchCorpusFiles, fetchCourseUploads } from "@/lib/api";
 import type { Material } from "@/data/chapters";
 import {
   buildCourseMaterials,
@@ -34,7 +35,8 @@ function StudySessionPage() {
   const { courseId } = Route.useParams();
   const { chapter: chapterSearch } = Route.useSearch();
   const navigate = useNavigate();
-  const enrolled = getEnrolledCourse(courseId);
+  const { hydrated: catalogHydrated } = useCatalog();
+  const enrolled = useMemo(() => getEnrolledCourse(courseId), [courseId, catalogHydrated]);
 
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,8 +49,14 @@ function StudySessionPage() {
       setError(null);
       try {
         const res = await fetchCorpusFiles();
+        let uploads: Awaited<ReturnType<typeof fetchCourseUploads>> = [];
+        try {
+          uploads = await fetchCourseUploads();
+        } catch {
+          uploads = [];
+        }
         if (cancelled) return;
-        setMaterials(buildCourseMaterials(courseId, res.files));
+        setMaterials(buildCourseMaterials(courseId, res.files, uploads));
       } catch (e) {
         if (!cancelled) {
           setMaterials(buildCourseMaterials(courseId, []));
@@ -61,12 +69,20 @@ function StudySessionPage() {
     return () => {
       cancelled = true;
     };
-  }, [courseId]);
+  }, [courseId, catalogHydrated]);
 
   const activeChapterId = useMemo(
     () => resolveStudyChapter(courseId, materials, chapterSearch),
     [courseId, materials, chapterSearch],
   );
+
+  if (!catalogHydrated) {
+    return (
+      <div className="max-w-lg mx-auto rounded-3xl border border-border bg-card p-8 text-center shadow-card text-sm text-muted-foreground">
+        Loading classroom…
+      </div>
+    );
+  }
 
   if (!enrolled) {
     throw notFound();

@@ -187,6 +187,31 @@ def test_learning_agent_success_sets_response_draft_tone_from_readiness(
     assert "supportive" in call_prompt or "empathetic" in call_prompt
 
 
+def test_build_prompt_asks_for_three_choices():
+    state = _base_state(
+        query="Generate exactly 3 multiple-choice questions from the current lesson.",
+        response_draft={"answer_type": "exercise"},
+    )
+    prompt = build_prompt(state)
+    assert "EXACTLY 3 options" in prompt
+    assert "copied exactly" in prompt
+
+
+def test_parse_output_maps_mcq_letter_to_option():
+    raw = json.dumps(
+        [
+            {
+                "question": "What is a variable?",
+                "options": ["A loop", "A name for a value", "A file"],
+                "answer": "B",
+            }
+        ]
+    )
+    out = parse_output(raw, "exercise")
+    assert out["content"][0]["answer"] == "A name for a value"
+    assert out["content"][0]["options"] == ["A loop", "A name for a value", "A file"]
+
+
 @patch.object(learning_mod, "update_conversation_summary", return_value="s")
 @patch.object(learning_mod, "get_llm")
 def test_learning_agent_practice_parses_json_list(mock_get_llm, _mock_summary):

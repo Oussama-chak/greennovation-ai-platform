@@ -13,8 +13,17 @@ export function corpusChapterId(filename: string): string {
  * One folder "Your documents" with one chapter per file from `data/`
  * (PDFs + PPTX in the reader; other types are download-only).
  */
+const SKIP_FILE = /\.(json|py|faiss|pkl|md|env|txt|csv)$/i;
+const SKIP_NAMES = new Set(["digital_twin.json", "projects.json", "index.faiss", "index.pkl"]);
+
+function isStudyDocument(name: string) {
+  if (SKIP_NAMES.has(name.toLowerCase())) return false;
+  if (SKIP_FILE.test(name)) return false;
+  return true;
+}
+
 export function buildCorpusMaterial(files: CorpusFile[]): Material | null {
-  const docs = files.filter((f) => f.kind === "document");
+  const docs = files.filter((f) => f.kind === "document" && isStudyDocument(f.name));
   if (docs.length === 0) return null;
 
   const chapters: Chapter[] = docs.map((f) => {

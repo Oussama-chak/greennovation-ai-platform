@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -10,7 +11,11 @@ import {
 import type { Project } from "@/data/projects";
 import { mergeProjectsForStudent } from "@/data/projects";
 import { currentStudent } from "@/data/studentProfile";
-import { loadTeacherAssignments } from "@/context/TeacherProjectsContext";
+import {
+  loadTeacherAssignments,
+  loadTeacherAssignmentsAsync,
+  TEACHER_PROJECTS_STORAGE_KEY,
+} from "@/context/TeacherProjectsContext";
 import { fetchProjects, saveProjects } from "@/lib/api";
 
 const STORAGE_KEY = "greennovation-projects-v1";
@@ -29,8 +34,7 @@ function loadFromStorage(): Project[] {
   }
 }
 
-function mergeWithTeacherAssignments(saved: Project[]): Project[] {
-  const templates = loadTeacherAssignments();
+function mergeWithTemplates(saved: Project[], templates: Project[]): Project[] {
   return mergeProjectsForStudent(saved, templates, currentStudent.classId);
 }
 
@@ -39,6 +43,7 @@ type ProjectsContextValue = {
   setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
   /** True after first load from API or local fallback (avoid saving defaults before hydrate). */
   hydrated: boolean;
+  refreshFromTeacher: () => Promise<void>;
 };
 
 const ProjectsContext = createContext<ProjectsContextValue | null>(null);
@@ -47,16 +52,36 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const templatesRef = useRef<Project[]>([]);
+  const skipNextSave = useRef(true);
+
+  const applyMerge = useCallback((saved: Project[], templates: Project[]) => {
+    templatesRef.current = templates;
+    setProjects(mergeWithTemplates(saved, templates));
+  }, []);
+
+  const refreshFromTeacher = useCallback(async () => {
+    const templates = await loadTeacherAssignmentsAsync();
+    setProjects((prev) => mergeWithTemplates(prev, templates));
+    templatesRef.current = templates;
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const remote = await fetchProjects();
+        const [remote, templates] = await Promise.all([
+          fetchProjects(),
+          loadTeacherAssignmentsAsync(),
+        ]);
         if (cancelled) return;
-        setProjects(mergeWithTeacherAssignments(remote));
+        skipNextSave.current = true;
+        applyMerge(remote, templates);
       } catch {
-        if (!cancelled) setProjects(mergeWithTeacherAssignments(loadFromStorage()));
+        if (!cancelled) {
+          skipNextSave.current = true;
+          applyMerge(loadFromStorage(), loadTeacherAssignments());
+        }
       } finally {
         if (!cancelled) setHydrated(true);
       }
@@ -64,17 +89,31 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [applyMerge]);
 
-  // Re-merge when teacher updates assignments in another tab
+  // Re-merge when teacher updates assignments (other tab localStorage OR same-tab custom event)
   useEffect(() => {
     if (!hydrated || typeof window === "undefined") return;
-    const onStorage = (e: StorageEvent) => {
-      if (e.key !== "greennovation-teacher-projects-v1") return;
-      setProjects((prev) => mergeWithTeacherAssignments(prev));
+
+    const rematch = () => {
+      void loadTeacherAssignmentsAsync().then((templates) => {
+        setProjects((prev) => mergeWithTemplates(prev, templates));
+        templatesRef.current = templates;
+      });
     };
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== TEACHER_PROJECTS_STORAGE_KEY) return;
+      rematch();
+    };
+    const onCustom = () => rematch();
+
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    window.addEventListener("greennovation-teacher-projects-changed", onCustom);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("greennovation-teacher-projects-changed", onCustom);
+    };
   }, [hydrated]);
 
   useEffect(() => {
@@ -84,9 +123,14 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     } catch {
       /* quota */
     }
+    if (skipNextSave.current) {
+      skipNextSave.current = false;
+      return;
+    }
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       saveTimer.current = null;
+      // Persist student-owned + progress on class assignments (templates stay on /api/teacher/projects).
       void saveProjects(projects).catch(() => {
         /* offline or API down — localStorage still has latest */
       });
@@ -96,7 +140,10 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     };
   }, [projects, hydrated]);
 
-  const value = useMemo(() => ({ projects, setProjects, hydrated }), [projects, hydrated]);
+  const value = useMemo(
+    () => ({ projects, setProjects, hydrated, refreshFromTeacher }),
+    [projects, hydrated, refreshFromTeacher],
+  );
 
   return <ProjectsContext.Provider value={value}>{children}</ProjectsContext.Provider>;
 }
@@ -114,4 +161,6 @@ export function useProjectsOptional() {
 }
 
 /** @deprecated Used internally — exported for tests if needed */
-export { mergeWithTeacherAssignments };
+export function mergeWithTeacherAssignments(saved: Project[]): Project[] {
+  return mergeWithTemplates(saved, loadTeacherAssignments());
+}

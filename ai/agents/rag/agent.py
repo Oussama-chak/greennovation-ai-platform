@@ -2,7 +2,8 @@ from typing import Dict, List
 from pathlib import Path
 from sentence_transformers import CrossEncoder
 from langchain_community.vectorstores import FAISS
-from langchain_huggingface import HuggingFaceEmbeddings
+from ai.agents.rag.embeddings import get_embeddings
+from ai.agents.rag.file_index import search_uploaded_files
 import uuid
 import os
 
@@ -18,9 +19,7 @@ def _data_dir() -> str:
 
 # Load models
 
-embedding_model = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
-)
+embedding_model = get_embeddings()
 
 vectorstore = FAISS.load_local(
     _data_dir(),
@@ -139,6 +138,8 @@ def rag_agent(state: dict) -> dict:
             state.get("course_context", {})
             .get("allowed_sources", [])
         )
+        if not isinstance(allowed_sources, list):
+            allowed_sources = []
 
         # When the UI pins one document, the global top-k semantic hits are often
         # from *other* PDFs. Retrieve many candidates first, then filter by file.
@@ -146,19 +147,25 @@ def rag_agent(state: dict) -> dict:
         if allowed_sources:
             k_retrieve = min(150, max(top_k * 25, 60))
 
-        docs = vectorstore.similarity_search(query_to_use, k=k_retrieve)
+        uploaded_docs = search_uploaded_files(allowed_sources, query_to_use, top_k)
+        used_upload_index = uploaded_docs is not None
 
-        # FILTER (course-specific)
-        if allowed_sources:
-            docs = [
-                d for d in docs
-                if _doc_matches_allowed_sources(d.metadata or {}, allowed_sources)
-            ]
+        if used_upload_index:
+            docs = uploaded_docs
+        else:
+            docs = vectorstore.similarity_search(query_to_use, k=k_retrieve)
+
+            # FILTER (course-specific) — only for the shared index.
+            if allowed_sources:
+                docs = [
+                    d for d in docs
+                    if _doc_matches_allowed_sources(d.metadata or {}, allowed_sources)
+                ]
 
         # RERANK (optional)
         
         if use_rerank and len(docs) > 1:
-            docs = rerank(query_to_use, docs, top_k=min(3, len(docs)))
+            docs = rerank(query_to_use, docs, top_k=min(top_k, len(docs)))
 
         
         # BUILD CHUNKS (truncated)
@@ -173,7 +180,8 @@ def rag_agent(state: dict) -> dict:
                     "status": "success",
                     "mode": mode,
                     "top_k_used": top_k,
-                    "rerank_used": use_rerank
+                    "rerank_used": use_rerank,
+                    "index": "uploaded_file" if used_upload_index else "shared",
                 }
             }
         }

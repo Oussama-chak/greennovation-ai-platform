@@ -55,7 +55,12 @@ def reply_to_text(final_response: object) -> tuple[str, str | list | None]:
             if isinstance(item, dict):
                 q = item.get("question", "")
                 a = item.get("answer", "")
-                lines.append(f"**Q{i + 1}** {q}\n*Answer:* {a}")
+                options = item.get("options")
+                if isinstance(options, list) and options:
+                    choices = "\n".join(f"- {opt}" for opt in options)
+                    lines.append(f"**Q{i + 1}** {q}\n{choices}\n*Answer:* {a}")
+                else:
+                    lines.append(f"**Q{i + 1}** {q}\n*Answer:* {a}")
             else:
                 lines.append(str(item))
         return "\n\n".join(lines), raw

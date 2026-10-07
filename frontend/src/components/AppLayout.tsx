@@ -41,6 +41,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const [breakOpen, setBreakOpen] = useState(false);
   const { location } = useRouterState();
   const path = location.pathname;
+  const isStudy = path.includes("/study");
 
   // expanded if hovered (desktop) OR mobile menu open
   const expanded = hoverExpanded || mobileOpen;
@@ -144,9 +145,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </aside>
 
         {/* Main */}
-        <div className="flex-1 flex flex-col min-w-0">
-          <header className="sticky top-0 z-30 glass border-b border-border/60">
-            <div className="flex items-center gap-3 px-4 lg:px-8 h-16">
+        <div className={`flex-1 flex flex-col min-w-0 ${isStudy ? "h-screen min-h-0" : ""}`}>
+          <header className="sticky top-0 z-30 glass border-b border-border/60 shrink-0">
+            <div
+              className={`flex items-center gap-3 ${
+                isStudy ? "px-3 lg:px-4 h-12" : "px-4 lg:px-8 h-16"
+              }`}
+            >
               <button
                 className="lg:hidden rounded-lg p-2 hover:bg-muted"
                 onClick={() => setMobileOpen(true)}
@@ -155,13 +160,19 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 <Menu className="h-5 w-5" />
               </button>
 
-              <div className="hidden md:flex items-center gap-2 flex-1 max-w-md">
+              <div className={`hidden md:flex items-center gap-2 flex-1 mx-2 ${isStudy ? "max-w-md" : "max-w-xl"}`}>
                 <div className="relative w-full">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Search
+                    className={`absolute top-1/2 -translate-y-1/2 text-muted-foreground/80 ${
+                      isStudy ? "left-3 h-3.5 w-3.5" : "left-4 h-4 w-4"
+                    }`}
+                  />
                   <input
                     type="search"
                     placeholder="Search courses, notes, projects..."
-                    className="w-full h-10 pl-10 pr-4 rounded-xl bg-muted/60 border border-transparent focus:bg-card focus:border-ring focus:outline-none text-sm transition-colors"
+                    className={`w-full rounded-full bg-[oklch(0.97_0.02_95)] border border-primary/10 shadow-[inset_0_1px_2px_oklch(0.7_0.02_155/0.08)] text-sm placeholder:text-muted-foreground/70 focus:bg-card focus:border-primary/25 focus:outline-none focus:ring-4 focus:ring-primary/10 transition ${
+                      isStudy ? "h-9 pl-9 pr-4" : "h-11 pl-11 pr-5"
+                    }`}
                   />
                 </div>
               </div>
@@ -180,11 +191,19 @@ export function AppLayout({ children }: { children: ReactNode }) {
             </div>
           </header>
 
-          <main className="flex-1 px-4 lg:px-8 py-6 lg:py-8">{children}</main>
+          <main
+            className={
+              isStudy
+                ? "flex-1 min-h-0 px-1.5 lg:px-2 py-1 lg:overflow-hidden"
+                : "flex-1 px-4 lg:px-8 py-6 lg:py-8"
+            }
+          >
+            {children}
+          </main>
         </div>
 
         <DailyReward />
-        <FloatingBamboo />
+        {path.includes("/study") ? null : <FloatingBamboo />}
         <TreeRewardToast />
         <BreathingBreak open={breakOpen} onOpenChange={setBreakOpen} />
       </div>

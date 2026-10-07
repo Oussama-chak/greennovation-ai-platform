@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { AvatarTip } from "@/components/AvatarTip";
 import {
@@ -11,6 +11,7 @@ import {
   Sparkles,
   Users,
 } from "lucide-react";
+import { useCatalog } from "@/context/CatalogContext";
 import {
   continueStudyTarget,
   enrolledCoursesForStudent,
@@ -38,9 +39,16 @@ export const Route = createFileRoute("/learning/")({
 
 function LearningPage() {
   const navigate = useNavigate();
-  const courses = enrolledCoursesForStudent();
+  const { hydrated } = useCatalog();
+  const courses = useMemo(() => enrolledCoursesForStudent(), [hydrated]);
   const continueTarget = continueStudyTarget();
-  const [expandedCourse, setExpandedCourse] = useState<string | null>(courses[0]?.courseId ?? null);
+  const [expandedCourse, setExpandedCourse] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (expandedCourse == null && courses[0]?.courseId) {
+      setExpandedCourse(courses[0].courseId);
+    }
+  }, [courses, expandedCourse]);
 
   const continueCourse = useMemo(
     () => courses.find((c) => c.courseId === continueTarget?.courseId),

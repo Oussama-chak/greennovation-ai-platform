@@ -1,8 +1,19 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import type { Project } from "@/data/projects";
 import { createMilestone, createTeacherProject } from "@/data/projects";
+import { fetchTeacherProjects, saveTeacherProjects } from "@/lib/api";
 
 const STORAGE_KEY = "greennovation-teacher-projects-v1";
+const SAVE_DEBOUNCE_MS = 600;
 
 const SEED_PROJECTS: Project[] = [
   {
@@ -55,18 +66,38 @@ type TeacherProjectsContextValue = {
     patch: Partial<Pick<Project, "name" | "tag" | "dueISO" | "nextStep">>,
   ) => void;
   projectsForClass: (classId: string) => Project[];
+  refresh: () => Promise<void>;
 };
 
 const TeacherProjectsContext = createContext<TeacherProjectsContextValue | null>(null);
 
+/** Broadcast so the student ProjectsContext can re-merge without waiting for another tab. */
+function notifyTeacherProjectsChanged() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent("greennovation-teacher-projects-changed"));
+}
+
 export function TeacherProjectsProvider({ children }: { children: ReactNode }) {
   const [assignments, setAssignments] = useState<Project[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipNextSave = useRef(true);
+
+  const refresh = useCallback(async () => {
+    try {
+      const remote = await fetchTeacherProjects();
+      setAssignments(remote.length ? remote : SEED_PROJECTS);
+    } catch {
+      setAssignments(loadFromStorage());
+    } finally {
+      setHydrated(true);
+    }
+  }, []);
 
   useEffect(() => {
-    setAssignments(loadFromStorage());
-    setHydrated(true);
-  }, []);
+    skipNextSave.current = true;
+    void refresh();
+  }, [refresh]);
 
   useEffect(() => {
     if (!hydrated || typeof window === "undefined") return;
@@ -75,6 +106,34 @@ export function TeacherProjectsProvider({ children }: { children: ReactNode }) {
     } catch {
       /* quota */
     }
+    if (skipNextSave.current) {
+      skipNextSave.current = false;
+      return;
+    }
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      saveTimer.current = null;
+      const snapshot = assignments;
+      void saveTeacherProjects(snapshot)
+        .then((saved) => {
+          // Do not setAssignments(saved) unconditionally — that re-fires this
+          // effect and loops PUT → setState → PUT. Only adopt server data when
+          // it differs, and skip the next persist for that echo.
+          const same =
+            JSON.stringify(saved) === JSON.stringify(snapshot);
+          if (!same) {
+            skipNextSave.current = true;
+            setAssignments(saved);
+          }
+          notifyTeacherProjectsChanged();
+        })
+        .catch(() => {
+          notifyTeacherProjectsChanged();
+        });
+    }, SAVE_DEBOUNCE_MS);
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
   }, [assignments, hydrated]);
 
   const value = useMemo<TeacherProjectsContextValue>(() => {
@@ -152,8 +211,9 @@ export function TeacherProjectsProvider({ children }: { children: ReactNode }) {
       removeTask,
       updateProject,
       projectsForClass,
+      refresh,
     };
-  }, [assignments, hydrated]);
+  }, [assignments, hydrated, refresh]);
 
   return (
     <TeacherProjectsContext.Provider value={value}>{children}</TeacherProjectsContext.Provider>
@@ -166,6 +226,17 @@ export function useTeacherProjects() {
     throw new Error("useTeacherProjects must be used within TeacherProjectsProvider");
   }
   return ctx;
+}
+
+/** Student side / offline fallback — prefers API, then localStorage, then seed. */
+export async function loadTeacherAssignmentsAsync(): Promise<Project[]> {
+  try {
+    const remote = await fetchTeacherProjects();
+    if (remote.length) return remote;
+  } catch {
+    /* fall through */
+  }
+  return loadFromStorage();
 }
 
 export function loadTeacherAssignments(): Project[] {
