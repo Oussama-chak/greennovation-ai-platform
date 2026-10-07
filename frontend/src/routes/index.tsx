@@ -18,7 +18,6 @@ import {
   Clock,
   TrendingUp,
   ArrowRight,
-  Trees,
   CheckCircle2,
   AlertTriangle,
   BookOpen,
@@ -26,7 +25,7 @@ import {
   Brain,
   Zap,
 } from "lucide-react";
-import magicBookPandaVideo from "@/assets/magic-book-panda1.webm";
+import magicBookPandaVideo from "@/assets/magic-book-panda5.webm";
 import magicBookPandaPoster from "@/assets/magic-book-panda.png";
 
 export const Route = createFileRoute("/")({
@@ -364,20 +363,11 @@ function NextActionCard() {
 
 function EcoForestCard() {
   return (
-    <Card className="lg:col-span-3 relative overflow-hidden gradient-forest">
+    <Card className="lg:col-span-3 relative mx-auto w-full max-w-[22.5rem] overflow-hidden gradient-forest lg:mx-0 lg:max-w-none">
       <div className="absolute inset-0 opacity-50 pointer-events-none">
         <div className="absolute bottom-0 left-0 right-0 h-2/3 bg-gradient-to-t from-primary/20 to-transparent" />
       </div>
-      <div className="relative flex h-full min-h-[20rem] flex-col">
-        <div className="flex shrink-0 items-center justify-between">
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <Trees className="h-4 w-4 text-primary" />
-            Knowledge Library
-          </div>
-          <span className="text-xs rounded-full bg-card/70 px-2 py-1 font-semibold">
-            🔥 4-day streak
-          </span>
-        </div>
+      <div className="relative mx-auto flex w-full max-w-[22.5rem] flex-col items-center px-1.5 pt-0.5 pb-2">
         <div className="magic-book-hero">
           <div className="magic-book-stage">
             <span className="magic-book-glow" aria-hidden />
@@ -394,13 +384,15 @@ function EcoForestCard() {
             />
           </div>
         </div>
-        <div className="shrink-0 text-center">
-          <div className="font-display text-xl font-bold">A world of ideas</div>
-          <div className="text-xs text-muted-foreground">Your floating learning sanctuary</div>
+        <div className="magic-book-copy shrink-0 text-center">
+          <div className="font-display text-lg font-bold leading-tight">A world of ideas</div>
+          <div className="mt-0.5 text-[11px] text-muted-foreground leading-snug">
+            Your floating learning sanctuary
+          </div>
           <Link
             to="/forest"
             search={{ reward: undefined }}
-            className="mt-3 inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+            className="mt-1 inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-primary hover:underline"
           >
             Explore your library <ArrowRight className="h-3.5 w-3.5" />
           </Link>
