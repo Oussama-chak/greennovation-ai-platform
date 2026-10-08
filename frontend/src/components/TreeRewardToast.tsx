@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { ArrowRight, X, Sparkles, Gift } from "lucide-react";
 import { Panda } from "@/components/PandaCompanion";
-import treeBamboo from "@/assets/tree-bamboo.png";
+import { PENDING_REWARD_KEY } from "@/components/DailyReward";
 import { useTreeInventory } from "@/hooks/useTreeInventory";
 import { clearLastReward, type TreeReward } from "@/lib/treeInventory";
+
+const BOOK_COVER = "/wallOfStories/books/cover-honey.png";
 
 // Plays a soft, pleasant chime when a tree is earned.
 function playChime() {
@@ -50,6 +52,7 @@ export function TreeRewardToast() {
     setActive(null);
     clearLastReward();
     if (visit) {
+      localStorage.setItem(PENDING_REWARD_KEY, "1");
       navigate({ to: "/forest", search: { reward: 1 } as never });
     }
   };
@@ -86,15 +89,15 @@ export function TreeRewardToast() {
                 animationDelay: `${i * 0.6}s`,
               }}
             >
-              🍃
+              ✨
             </div>
           ))}
           <div className="absolute inset-0 grid place-items-center">
             <div className="relative">
               <img
-                src={treeBamboo}
-                alt="Bamboo tree reward"
-                className="h-24 drop-shadow-xl animate-[float_4s_ease-in-out_infinite]"
+                src={BOOK_COVER}
+                alt="New book for your library"
+                className="h-24 w-auto drop-shadow-xl animate-[float_4s_ease-in-out_infinite]"
               />
               <Sparkles className="absolute -top-2 -right-2 h-6 w-6 text-warning animate-[seed-sparkle_1.6s_ease-in-out_infinite]" />
               <Sparkles
@@ -114,10 +117,10 @@ export function TreeRewardToast() {
 
         <div className="p-6 text-center">
           <div className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-widest font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-full">
-            <Gift className="h-3 w-3" /> {isProject ? "Project complete" : "Tree earned"}
+            <Gift className="h-3 w-3" /> {isProject ? "Project complete" : "New chapter"}
           </div>
           <h2 className="font-display text-2xl font-bold mt-3">
-            {isProject ? "You earned a bamboo tree! 🎋" : "New tree earned! 🌱"}
+            {isProject ? "You earned a new book!" : "A new book is ready"}
           </h2>
           <p className="text-sm text-muted-foreground mt-2 italic leading-relaxed">
             "{active.message}"
@@ -126,7 +129,7 @@ export function TreeRewardToast() {
           <div className="flex items-center gap-3 mt-5 rounded-2xl bg-muted/60 p-3 text-left">
             <Panda mood="waving" size={48} className="shrink-0" />
             <p className="text-xs text-foreground/80 leading-snug">
-              Plant it in your Eco Forest and watch your hard work grow into something beautiful.
+              Open your Knowledge Library and it will wake the next chapter on your Wall of Stories.
             </p>
           </div>
 
