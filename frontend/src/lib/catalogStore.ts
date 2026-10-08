@@ -46,6 +46,10 @@ export function getCourses(): TeacherCourse[] {
   return state.courses;
 }
 
+export function getCourse(courseId: string): TeacherCourse | undefined {
+  return state.courses.find((course) => course.id === courseId);
+}
+
 export function getClasses(): TeacherClass[] {
   return state.classes;
 }

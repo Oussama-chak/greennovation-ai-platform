@@ -17,6 +17,8 @@ export type WallBook = {
   reward?: { kind: RewardKind; text: string };
   dl?: string;
   shaking?: boolean;
+  /** Decorative volume — not part of chapter progress. */
+  filler?: boolean;
 };
 
 export type WallSnapshot = {

@@ -25,6 +25,15 @@ export type EnergySnapshot = {
   reuseReadinessSignal?: boolean;
 };
 
+/** Per-turn snapshot of energy, readiness, learning, routing, and RAG. */
+export type AgentSignals = {
+  energy?: Record<string, unknown>;
+  readiness?: Record<string, unknown>;
+  learning?: Record<string, unknown>;
+  routing?: Record<string, unknown>;
+  rag?: Record<string, unknown>;
+};
+
 export type ChatResponse = {
   session_id: string;
   reply: string;
@@ -34,6 +43,7 @@ export type ChatResponse = {
   warnings: string[];
   session_insights?: SessionInsightsPayload | null;
   energy?: EnergySnapshot | null;
+  agent_signals?: AgentSignals | null;
 };
 
 export async function postChat(body: {

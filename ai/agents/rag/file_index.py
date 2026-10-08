@@ -1,4 +1,4 @@
-"""Per-file FAISS indexes built when a teacher uploads a PDF."""
+"""Per-file course uploads indexed in OpenSearch."""
 
 from __future__ import annotations
 
@@ -6,16 +6,13 @@ import hashlib
 import json
 import os
 import re
-import shutil
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
 from langchain_core.documents import Document
 
 _LOCK = threading.Lock()
-_CACHE: dict[str, Any] = {}
 _CHUNK_SIZE = 900
 _CHUNK_OVERLAP = 120
 _PDF_NAME = re.compile(r"^[\w.\- ()]+\.pdf$", re.IGNORECASE)
@@ -142,35 +139,6 @@ def resolve_filename(name: str) -> str | None:
     return None
 
 
-def _load_index(filename: str):
-    with _LOCK:
-        cached = _CACHE.get(filename)
-        if cached is not None:
-            return cached
-        manifest = _read_manifest()
-    entry = manifest.get(filename)
-    if not entry:
-        return None
-    slug = entry.get("slug")
-    if not isinstance(slug, str) or not slug:
-        return None
-    folder = index_root() / slug
-    if not (folder / "index.faiss").is_file():
-        return None
-    from langchain_community.vectorstores import FAISS
-
-    from ai.agents.rag.embeddings import get_embeddings
-
-    store = FAISS.load_local(
-        str(folder),
-        get_embeddings(),
-        allow_dangerous_deserialization=True,
-    )
-    with _LOCK:
-        _CACHE[filename] = store
-    return store
-
-
 def index_pdf(
     pdf_path: Path,
     filename: str,
@@ -183,27 +151,20 @@ def index_pdf(
     if not documents:
         raise ValueError("No extractable text in this PDF. Scanned pages need a text layer.")
 
-    from langchain_community.vectorstores import FAISS
-
-    from ai.agents.rag.embeddings import get_embeddings
+    from ai.agents.rag.opensearch_store import UPLOADS_INDEX, delete_source, index_documents
 
     with _LOCK:
         manifest = _read_manifest()
         slug = _slug_for(filename, manifest)
 
-    root = index_root()
-    root.mkdir(parents=True, exist_ok=True)
-    staging = root / f".{slug}.staging"
-    if staging.exists():
-        shutil.rmtree(staging)
-    store = FAISS.from_documents(documents, get_embeddings())
-    store.save_local(str(staging))
+    delete_source(UPLOADS_INDEX, filename)
+    index_documents(
+        UPLOADS_INDEX,
+        documents,
+        extra={"course_id": course_id, "chapter_id": chapter_id, "source": filename},
+    )
 
-    final = root / slug
     with _LOCK:
-        if final.exists():
-            shutil.rmtree(final)
-        staging.rename(final)
         manifest = _read_manifest()
         record = {
             "filename": filename,
@@ -217,7 +178,6 @@ def index_pdf(
         }
         manifest[filename] = record
         _write_manifest(manifest)
-        _CACHE[filename] = store
     return record
 
 
@@ -237,14 +197,9 @@ def search_uploaded_files(allowed_sources: list[str], query: str, k: int) -> lis
     if not names:
         return None
 
-    docs = []
+    from ai.agents.rag.migrate_faiss import migrate_legacy_faiss
+    from ai.agents.rag.opensearch_store import UPLOADS_INDEX, knn_search
+
+    migrate_legacy_faiss()
     fetch_k = max(k, 8)
-    for name in names:
-        store = _load_index(name)
-        if store is None:
-            continue
-        total = int(getattr(store.index, "ntotal", 0) or 0)
-        if total <= 0:
-            continue
-        docs.extend(store.similarity_search(query, k=min(fetch_k, total)))
-    return docs
+    return knn_search(UPLOADS_INDEX, query, fetch_k * len(names), sources=names)

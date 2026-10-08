@@ -9,6 +9,7 @@ langchain-huggingface>=0.0.3
 sentence-transformers>=2.2.0
 python-dotenv
 faiss-cpu
+opensearch-py>=2.4.0
 pypdf>=3.17,<4
 python-multipart>=0.0.9
 pytest>=8.0

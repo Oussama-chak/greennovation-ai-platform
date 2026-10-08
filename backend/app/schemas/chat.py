@@ -49,3 +49,5 @@ class ChatResponse(BaseModel):
     warnings: list[str] = []
     session_insights: SessionInsightsPayload | None = None
     energy: EnergySnapshot | None = None
+    # Compact debug view of energy, readiness, routing, and learning knobs.
+    agent_signals: dict | None = None

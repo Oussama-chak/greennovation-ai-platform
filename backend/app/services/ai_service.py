@@ -9,10 +9,87 @@ from backend.app.services import session_service as sessions
 
 from ai.agents.student_modeling import merge_pipeline_into_twin
 from backend.app.services import digital_twin_store
+from ai.agents.learning.agent import _derive_behavior_settings
 from ai.agents.student_modeling.adapters import (
     energy_signals_from_twin,
     learning_context_from_twin,
 )
+
+
+def _clip(value: object, limit: int = 180) -> str:
+    text = str(value or "").strip()
+    if len(text) <= limit:
+        return text
+    return text[: limit - 1] + "…"
+
+
+def agent_signals_from_state(state: dict) -> dict:
+    """Flat snapshot so the chat UI can show what each agent decided this turn."""
+    merged = state.get("merged_signal_bundle") or {}
+    energy = state.get("energy_decision") or merged.get("energy_decision") or {}
+    readiness = state.get("readiness_signal") or merged.get("readiness_signal") or {}
+    routing = state.get("routing") or {}
+    chunks = state.get("retrieved_chunks") or merged.get("retrieved_chunks") or []
+    runs = state.get("agent_runs") or {}
+    behavior = _derive_behavior_settings(energy if isinstance(energy, dict) else {}, readiness if isinstance(readiness, dict) else {})
+
+    quiz_difficulties: list[str] = []
+    final = state.get("final_response")
+    if isinstance(final, list):
+        for item in final:
+            if isinstance(item, dict) and item.get("difficulty"):
+                quiz_difficulties.append(str(item["difficulty"]))
+
+    def run_status(name: str) -> str:
+        row = runs.get(name) if isinstance(runs, dict) else None
+        if isinstance(row, dict) and row.get("status"):
+            return str(row["status"])
+        return "not run"
+
+    return {
+        "energy": {
+            "mode": energy.get("mode"),
+            "depth": energy.get("response_depth"),
+            "max_tokens": energy.get("max_tokens"),
+            "quiz": energy.get("generate_quiz"),
+            "use_rag": energy.get("use_rag"),
+            "use_readiness": energy.get("use_readiness"),
+            "use_profile": energy.get("use_profile"),
+            "cached_answer": energy.get("reuse_cached_answer"),
+            "cached_rag": energy.get("reuse_cached_rag"),
+            "cached_readiness": energy.get("reuse_readiness_signal"),
+            "reason": _clip(energy.get("reason")),
+            "status": run_status("energy_agent"),
+        },
+        "readiness": {
+            "difficulty": readiness.get("difficulty_adjustment"),
+            "intensity": readiness.get("recommended_intensity"),
+            "tone": readiness.get("support_tone"),
+            "minutes": readiness.get("suggested_session_minutes"),
+            "break": readiness.get("break_recommendation"),
+            "fatigue": readiness.get("behavioral_fatigue_band"),
+            "workload": readiness.get("workload_pressure_band"),
+            "reason": _clip(readiness.get("reasoning_summary")),
+            "status": run_status("readiness_agent"),
+        },
+        "learning": {
+            "quiz_level": behavior.get("difficulty"),
+            "tone": behavior.get("support_tone"),
+            "minutes": behavior.get("suggested_minutes"),
+            "break": behavior.get("break_needed"),
+            "quiz_difficulties": quiz_difficulties,
+            "status": run_status("learning_agent"),
+        },
+        "routing": {
+            "intent": routing.get("intent"),
+            "agents": routing.get("requested_agents") or [],
+            "reason": _clip(routing.get("route_reason")),
+        },
+        "rag": {
+            "chunks": len(chunks) if isinstance(chunks, list) else 0,
+            "status": run_status("rag_agent"),
+        },
+    }
 def _energy_to_snapshot(state: dict) -> EnergySnapshot | None:
     """Expose energy agent decision for the workspace sidebar."""
     ed = state.get("energy_decision") or {}
@@ -112,6 +189,7 @@ async def chat_turn(req: ChatRequest) -> ChatResponse:
             errors=[str(e)],
             warnings=[],
             energy=None,
+            agent_signals=None,
         )
 
     final = state.get("final_response")
@@ -127,4 +205,5 @@ async def chat_turn(req: ChatRequest) -> ChatResponse:
         warnings=list(state.get("warnings") or []),
         session_insights=_readiness_to_session_insights(state),
         energy=_energy_to_snapshot(state),
+        agent_signals=agent_signals_from_state(state),
     )

@@ -34,7 +34,9 @@ import {
   corpusFileUrl,
   deleteSession,
   finalizeSession,
+  fetchReadiness,
   postChat,
+  type AgentSignals,
   type EnergySnapshot,
   type PromptHint,
 } from "@/lib/api";
@@ -126,7 +128,98 @@ type ChatMessage = {
   quizItems?: QuizItem[];
   summarySections?: SummarySections | null;
   variant?: "default" | "summary" | "explain";
+  signals?: AgentSignals | null;
 };
+
+function signalText(value: unknown): string {
+  if (value == null || value === "") return "—";
+  if (typeof value === "boolean") return value ? "yes" : "no";
+  if (Array.isArray(value)) return value.length ? value.map(String).join(", ") : "—";
+  return String(value);
+}
+
+function SignalGroup({ title, rows }: { title: string; rows: [string, unknown][] }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-primary/80">{title}</p>
+      <dl className="mt-1 space-y-0.5">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex gap-2 text-[11px] leading-4">
+            <dt className="shrink-0 text-muted-foreground">{label}</dt>
+            <dd className="min-w-0 break-words text-foreground/90">{signalText(value)}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+function AgentSignalsStrip({ signals }: { signals: AgentSignals }) {
+  const energy = signals.energy ?? {};
+  const readiness = signals.readiness ?? {};
+  const learning = signals.learning ?? {};
+  const routing = signals.routing ?? {};
+  const rag = signals.rag ?? {};
+  return (
+    <details className="mt-1.5 rounded-xl border border-primary/15 bg-card/80 px-2.5 py-1.5">
+      <summary className="cursor-pointer text-[11px] font-medium text-muted-foreground select-none">
+        Agent signals · {signalText(routing.intent)} · quiz {signalText(learning.quiz_level)}
+      </summary>
+      <div className="mt-2 grid gap-3 sm:grid-cols-2">
+        <SignalGroup
+          title="Energy"
+          rows={[
+            ["mode", energy.mode],
+            ["depth", energy.depth],
+            ["tokens", energy.max_tokens],
+            ["quiz on", energy.quiz],
+            ["use RAG", energy.use_rag],
+            ["cached answer", energy.cached_answer],
+            ["cached RAG", energy.cached_rag],
+            ["cached readiness", energy.cached_readiness],
+            ["status", energy.status],
+            ["reason", energy.reason],
+          ]}
+        />
+        <SignalGroup
+          title="Readiness"
+          rows={[
+            ["difficulty", readiness.difficulty],
+            ["intensity", readiness.intensity],
+            ["tone", readiness.tone],
+            ["minutes", readiness.minutes],
+            ["break", readiness.break],
+            ["fatigue", readiness.fatigue],
+            ["workload", readiness.workload],
+            ["status", readiness.status],
+            ["reason", readiness.reason],
+          ]}
+        />
+        <SignalGroup
+          title="Learning"
+          rows={[
+            ["quiz level", learning.quiz_level],
+            ["tone", learning.tone],
+            ["minutes", learning.minutes],
+            ["break", learning.break],
+            ["question levels", learning.quiz_difficulties],
+            ["status", learning.status],
+          ]}
+        />
+        <SignalGroup
+          title="Routing + RAG"
+          rows={[
+            ["intent", routing.intent],
+            ["agents", routing.agents],
+            ["reason", routing.reason],
+            ["chunks", rag.chunks],
+            ["RAG status", rag.status],
+          ]}
+        />
+      </div>
+    </details>
+  );
+}
 
 /** Per-chapter chat thread inside a course study session. */
 type ChapterChatState = {
@@ -241,8 +334,15 @@ function displayFileName(name: string) {
   return name.replace(/\.(pdf|pptx|docx|ppt)$/i, "");
 }
 
-/** Study block length before auto end + breathing break. */
-const WORKSPACE_STUDY_COUNTDOWN_SECONDS = 2 * 60;
+/** Used only if the readiness agent cannot be reached. Matches its "normal" length. */
+const FALLBACK_SESSION_MINUTES = 30;
+
+function minutesFromReadinessSignal(signal: Record<string, unknown> | null | undefined): number | null {
+  const raw = signal?.suggested_session_minutes ?? signal?.minutes;
+  const n = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isFinite(n)) return null;
+  return Math.min(90, Math.max(10, Math.round(n)));
+}
 
 function formatCountdown(totalSeconds: number): string {
   const m = Math.floor(totalSeconds / 60);
@@ -320,6 +420,9 @@ export function WorkspaceSession({
   const [studySessionActive, setStudySessionActive] = useState(false);
   /** Counts down while study session is on; at 0 we finalize + show breathing break. */
   const [studyCountdownSeconds, setStudyCountdownSeconds] = useState<number | null>(null);
+  const [plannedMinutes, setPlannedMinutes] = useState(FALLBACK_SESSION_MINUTES);
+  /** Set once per study block so later chat turns do not restart the clock. */
+  const sessionMinutesRef = useRef<number | null>(null);
   const timerExpiryHandled = useRef(false);
   const endingFromTimer = useRef(false);
   /** Planner output from POST /api/session/:id/end — shown until the user sends another chat message. */
@@ -328,15 +431,32 @@ export function WorkspaceSession({
   const [endingSession, setEndingSession] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
+  const applySessionMinutes = useCallback((mins: number) => {
+    if (sessionMinutesRef.current != null) return;
+    sessionMinutesRef.current = mins;
+    setPlannedMinutes(mins);
+    setStudyCountdownSeconds(mins * 60);
+  }, []);
+
+  const loadSessionLength = useCallback(async () => {
+    try {
+      const readiness = await fetchReadiness(getStoredChatSessionId());
+      applySessionMinutes(minutesFromReadinessSignal(readiness.readiness_signal) ?? FALLBACK_SESSION_MINUTES);
+    } catch {
+      applySessionMinutes(FALLBACK_SESSION_MINUTES);
+    }
+  }, [applySessionMinutes]);
+
   useEffect(() => {
     const sid = getStoredChatSessionId();
     setStudySessionId(sid);
     if (sid) {
       setStudySessionActive(true);
       timerExpiryHandled.current = false;
-      setStudyCountdownSeconds(WORKSPACE_STUDY_COUNTDOWN_SECONDS);
+      sessionMinutesRef.current = null;
+      void loadSessionLength();
     }
-  }, []);
+  }, [loadSessionLength]);
 
   const persistCurrentChapterChat = useCallback(() => {
     const chapterId = activeChapterRef.current;
@@ -386,6 +506,7 @@ export function WorkspaceSession({
     setChatInput("");
     setStudySessionActive(false);
     setStudyCountdownSeconds(null);
+    sessionMinutesRef.current = null;
     timerExpiryHandled.current = false;
   };
 
@@ -423,8 +544,9 @@ export function WorkspaceSession({
   const onStudySessionSwitch = (checked: boolean) => {
     if (checked) {
       timerExpiryHandled.current = false;
+      sessionMinutesRef.current = null;
       setStudySessionActive(true);
-      setStudyCountdownSeconds(WORKSPACE_STUDY_COUNTDOWN_SECONDS);
+      void loadSessionLength();
       return;
     }
     if (!sessionId && messages.length === 0) {
@@ -561,6 +683,10 @@ export function WorkspaceSession({
       const { cleaned } = stripSessionInsightLines(reply);
       setEnergySnapshot(res.energy ?? null);
       setRoutingSnapshot(formatRoutingSummary(res.routing ?? null));
+      const pipelineMinutes = minutesFromReadinessSignal(
+        (res.agent_signals?.readiness ?? null) as Record<string, unknown> | null,
+      );
+      if (pipelineMinutes != null) applySessionMinutes(pipelineMinutes);
       const sourcesFromReply = parseSourcesFromReply(cleaned);
       setSourcesList(sourcesFromReply);
       const withoutSources = stripSourcesBlock(cleaned);
@@ -601,6 +727,7 @@ export function WorkspaceSession({
           quizItems,
           summarySections: summarySections ?? undefined,
           variant,
+          signals: res.agent_signals ?? null,
         },
       ]);
     } catch (e) {
@@ -898,16 +1025,18 @@ export function WorkspaceSession({
                 </div>
               )}
               {messages.map((m) => (
-                <ChatBubble
-                  key={m.id}
-                  calm
-                  role={m.role}
-                  text={m.text}
-                  streaming={m.streaming}
-                  quizItems={m.quizItems}
-                  summarySections={m.summarySections}
-                  variant={m.variant ?? "default"}
-                />
+                <div key={m.id}>
+                  <ChatBubble
+                    calm
+                    role={m.role}
+                    text={m.text}
+                    streaming={m.streaming}
+                    quizItems={m.quizItems}
+                    summarySections={m.summarySections}
+                    variant={m.variant ?? "default"}
+                  />
+                  {m.role === "bamboo" && m.signals ? <AgentSignalsStrip signals={m.signals} /> : null}
+                </div>
               ))}
               {thinking && <TypingDots />}
               {sessionEndPlanner ? (
@@ -1004,7 +1133,7 @@ export function WorkspaceSession({
             <AlertDialogDescription>
               This clears all chapter chats, runs the planner, deletes the AI session on the server,
               and opens a short breathing break. Turn the study session on again to restart the
-              timer from {Math.floor(WORKSPACE_STUDY_COUNTDOWN_SECONDS / 60)} minutes.
+              timer from {plannedMinutes} minutes, the length the readiness agent suggested for this block.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

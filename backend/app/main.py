@@ -6,7 +6,7 @@ Run from repo root (greenNovation):
   uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8000
 
 Env: GROQ_API_KEY (required for learning, profile, and planner).
-Optional: GROQ_MODEL, GREENNOVATION_DATA_DIR.
+Optional: GROQ_MODEL, GREENNOVATION_DATA_DIR, OPENSEARCH_URL.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.config import bootstrap
 
-# Must run before any `ai.*` import (RAG loads FAISS at module import time).
+# Must run before any `ai.*` import so GREENNOVATION_DATA_DIR and .env are set.
 bootstrap()
 
 from backend.app.api.routes import (

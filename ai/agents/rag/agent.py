@@ -1,31 +1,11 @@
 from typing import Dict, List
-from pathlib import Path
 from sentence_transformers import CrossEncoder
-from langchain_community.vectorstores import FAISS
-from ai.agents.rag.embeddings import get_embeddings
 from ai.agents.rag.file_index import search_uploaded_files
+from ai.agents.rag.migrate_faiss import migrate_legacy_faiss
+from ai.agents.rag.opensearch_store import COURSE_INDEX, knn_search
 import uuid
 import os
 
-
-def _data_dir() -> str:
-    """Index folder (contains index.faiss, index.pkl). CWD-independent."""
-    env = os.environ.get("GREENNOVATION_DATA_DIR")
-    if env:
-        return env
-    # ai/agents/rag/agent.py -> greenNovation repo root
-    return str(Path(__file__).resolve().parents[2] / "data")
-
-
-# Load models
-
-embedding_model = get_embeddings()
-
-vectorstore = FAISS.load_local(
-    _data_dir(),
-    embedding_model,
-    allow_dangerous_deserialization=True
-)
 
 reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
 
@@ -147,13 +127,14 @@ def rag_agent(state: dict) -> dict:
         if allowed_sources:
             k_retrieve = min(150, max(top_k * 25, 60))
 
-        uploaded_docs = search_uploaded_files(allowed_sources, query_to_use, top_k)
+        uploaded_docs = search_uploaded_files(allowed_sources, query_to_use, k_retrieve)
         used_upload_index = uploaded_docs is not None
 
         if used_upload_index:
             docs = uploaded_docs
         else:
-            docs = vectorstore.similarity_search(query_to_use, k=k_retrieve)
+            migrate_legacy_faiss()
+            docs = knn_search(COURSE_INDEX, query_to_use, k_retrieve)
 
             # FILTER (course-specific) — only for the shared index.
             if allowed_sources:
@@ -181,7 +162,7 @@ def rag_agent(state: dict) -> dict:
                     "mode": mode,
                     "top_k_used": top_k,
                     "rerank_used": use_rerank,
-                    "index": "uploaded_file" if used_upload_index else "shared",
+                    "index": "opensearch_upload" if used_upload_index else "opensearch_course",
                 }
             }
         }
