@@ -238,7 +238,7 @@ function ProjectsPage() {
           // Award a tree exactly once per project completion.
           awardTree(
             "project",
-            `Project complete: "${p.name}" — you earned a bamboo tree! 🎋`,
+            `Project complete: "${p.name}" — a new book is waiting in your library.`,
             `project-${p.id}`,
           );
         }
@@ -390,7 +390,7 @@ function ProjectsPage() {
               {pending?.completing ? (
                 <>
                   You're about to tick <strong className="text-foreground">{pending?.name}</strong>{" "}
-                  as done. Bamboo will celebrate with you 🐼🎉
+                  as done. Finishing the project adds a book to your library.
                 </>
               ) : (
                 <>

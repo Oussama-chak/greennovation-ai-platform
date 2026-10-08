@@ -16,7 +16,7 @@ import {
   Wand2,
 } from "lucide-react";
 import { useTreeInventory } from "@/hooks/useTreeInventory";
-import { useForest, useForestInventory, usePlantTree } from "@/hooks/useForest";
+import { useForest } from "@/hooks/useForest";
 import { consumeTree } from "@/lib/treeInventory";
 import {
   WallOfStories,
@@ -52,12 +52,9 @@ export const Route = createFileRoute("/forest")({
 
 function KnowledgeLibraryPage() {
   const { reward } = Route.useSearch();
-  const { count: localAvailable } = useTreeInventory();
+  const { count: available } = useTreeInventory();
   const { data: backendForest } = useForest();
-  const { data: backendInventory } = useForestInventory();
-  const { mutate: plantViaBackend, isPending: backendPlacing } = usePlantTree();
 
-  const available = backendInventory?.available ?? localAvailable;
   const streakDays = backendForest?.streak_days ?? 4;
 
   const [wall, setWall] = useState<WallSnapshot>({
@@ -84,52 +81,15 @@ function KnowledgeLibraryPage() {
   }, []);
 
   const revealNext = useCallback(() => {
-    if (!actionsRef.current || revealing || backendPlacing) return;
+    if (!actionsRef.current || revealing) return;
     if (wall.nextTitle == null && wall.total > 0 && wall.done >= wall.total) return;
 
     setRevealing(true);
-    const finish = () => {
-      actionsRef.current?.completeNext();
-      setRevealing(false);
-      sceneRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    };
-
-    // Spend a reward token when available; always wake the next chapter
-    if (available > 0) {
-      if (backendInventory) {
-        plantViaBackend(
-          {
-            kind: "oak",
-            x: 20 + Math.random() * 60,
-            y: 64 + Math.random() * 22,
-            scale: 0.75 + Math.random() * 0.15,
-          },
-          {
-            onSuccess: () => {
-              consumeTree();
-              finish();
-            },
-            onError: () => {
-              consumeTree();
-              finish();
-            },
-          },
-        );
-        return;
-      }
-      consumeTree();
-    }
-    finish();
-  }, [
-    available,
-    backendInventory,
-    backendPlacing,
-    plantViaBackend,
-    revealing,
-    wall.done,
-    wall.nextTitle,
-    wall.total,
-  ]);
+    if (available > 0) consumeTree();
+    actionsRef.current.completeNext();
+    setRevealing(false);
+    sceneRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [available, revealing, wall.done, wall.nextTitle, wall.total]);
 
   const focusNext = useCallback(() => {
     actionsRef.current?.focusNext();
@@ -148,9 +108,9 @@ function KnowledgeLibraryPage() {
 
   const wallReady = wall.total > 0;
   const wallDone = wallReady && wall.nextTitle == null;
-  const canReveal = wallReady && !wallDone && !revealing && !backendPlacing;
+  const canReveal = wallReady && !wallDone && !revealing;
   const buttonLabel =
-    revealing || backendPlacing
+    revealing
       ? "Revealing…"
       : !wallReady
         ? "Opening wall…"
@@ -289,7 +249,7 @@ function KnowledgeLibraryPage() {
               className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl gradient-primary py-2.5 text-xs font-semibold text-primary-foreground transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Sparkles className="h-3.5 w-3.5" />
-              {revealing || backendPlacing
+              {revealing
                 ? "Revealing…"
                 : !wallReady
                   ? "Opening wall…"
