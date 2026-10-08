@@ -7,7 +7,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import { Link } from "@tanstack/react-router";
+import { BookReader, type BookOrigin } from "./BookReader";
 import "./wallOfStories.css";
 import type { RewardKind, WallActions, WallBook, WallSnapshot } from "./types";
 
@@ -141,10 +141,6 @@ const SUMMARIES = [
   "You connected this chapter to your earlier notes. Next, tighten the argument.",
 ];
 const BADGES = ["On-Time Hero", "Deep Focus", "Early Bird", "Steady Pace"];
-const MYSTERY_REWARD = {
-  kind: "rare decor",
-  text: "A brass reading lamp for your wall. Rare find!",
-};
 const STREAK_DAYS = 5;
 
 function makeRnd() {
@@ -262,6 +258,7 @@ export function WallOfStories({
   const [ink, setInk] = useState(128);
   const [inkDisplay, setInkDisplay] = useState(128);
   const [openId, setOpenId] = useState<number | null>(null);
+  const [bookOrigin, setBookOrigin] = useState<BookOrigin | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [say, setSay] = useState(
     "Your wall is waking up, one chapter at a time. Pick any book, or follow the glowing one.",
@@ -437,27 +434,6 @@ export function WallOfStories({
   ]);
 
 
-  useEffect(() => {
-    if (openId === null) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeSheet();
-    };
-    // Use capture on next tick so the opening click doesn't instantly dismiss
-    const onClick = (e: MouseEvent) => {
-      const t = e.target as HTMLElement;
-      if (!t.closest(".wos-sheet, .wos-book, .wos-chip")) closeSheet();
-    };
-    window.addEventListener("keydown", onKey);
-    const timer = window.setTimeout(() => {
-      document.addEventListener("click", onClick);
-    }, 0);
-    return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener("keydown", onKey);
-      document.removeEventListener("click", onClick);
-    };
-  }, [openId, closeSheet]);
-
   const toggleTheme = () => {
     const dark =
       theme === "dark" ||
@@ -623,6 +599,7 @@ export function WallOfStories({
                       b.mystery ? "m" : "",
                       next?.id === b.id ? "next" : "",
                       b.shaking ? "shake" : "",
+                      openId === b.id ? "book-in-reader" : "",
                     ]
                       .filter(Boolean)
                       .join(" ")}
@@ -642,7 +619,11 @@ export function WallOfStories({
                           : "Mystery book, sleeping"
                         : `${b.title}, ${b.awake ? "awake" : "sleeping"}, due ${b.due}`
                     }
-                    onClick={() => setOpenId(b.id)}
+                    onClick={(event) => {
+                      const rect = event.currentTarget.getBoundingClientRect();
+                      setBookOrigin({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
+                      setOpenId(b.id);
+                    }}
                   >
                     <img
                       className="wos-book-img"
@@ -661,84 +642,18 @@ export function WallOfStories({
         </main>
       </div>
 
-      <div
-        className={`wos-sheet${openBook ? " on" : ""}`}
-        role="dialog"
-        aria-live="polite"
-        aria-hidden={!openBook}
-      >
-        {openBook && (
-          <>
-            <button
-              type="button"
-              className="wos-x"
-              aria-label="Close"
-              onClick={closeSheet}
-            >
-              ✕
-            </button>
-            <div
-              className={`wos-cover asset incline${openBook.awake ? "" : " sl"}`}
-              style={{ ["--wos-c" as string]: openBook.c } as CSSProperties}
-            >
-              <img
-                src={bookCoverSrc(openBook.id, openBook.mystery)}
-                alt=""
-                draggable={false}
-              />
-            </div>
-            <div>
-              {openBook.mystery ? (
-                openBook.awake ? (
-                  <>
-                    <h3>Mystery book</h3>
-                    <p>{MYSTERY_REWARD.text}</p>
-                    <span className="wos-k">{MYSTERY_REWARD.kind}</span>
-                  </>
-                ) : (
-                  <>
-                    <h3>Mystery book</h3>
-                    <p>
-                      It wakes up when you reach {openBook.th} chapters.
-                      Something nice is inside.
-                    </p>
-                  </>
-                )
-              ) : openBook.awake ? (
-                <>
-                  <h3>{openBook.title}</h3>
-                  <span className="wos-k">{SUBJ[openBook.subj]?.[0]}</span>
-                  <span className="wos-k">{openBook.reward?.kind}</span>
-                  <p>{openBook.reward?.text}</p>
-                </>
-              ) : (
-                <>
-                  <h3>{openBook.title}</h3>
-                  <span className="wos-k">{SUBJ[openBook.subj]?.[0]}</span>
-                  <span className="wos-k">due {openBook.due}</span>
-                  <p>This chapter is waiting to be discovered.</p>
-                  <div className="wos-row">
-                    <Link
-                      to="/projects"
-                      className="wos-chip"
-                      style={{ textDecoration: "none" }}
-                    >
-                      Start this task
-                    </Link>
-                    <button
-                      type="button"
-                      className="wos-chip g"
-                      onClick={() => complete(openBook.id)}
-                    >
-                      Mark done (demo)
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </>
-        )}
-      </div>
+      {openBook && bookOrigin && (
+        <BookReader
+          key={openBook.id}
+          book={openBook}
+          origin={bookOrigin}
+          cover={bookCoverSrc(openBook.id, openBook.mystery)}
+          spine={bookAssetSrc(openBook.id, openBook.mystery)}
+          subject={openBook.mystery ? "Mystery collection" : SUBJ[openBook.subj]?.[0] ?? "Your collection"}
+          onClose={closeSheet}
+          onComplete={() => complete(openBook.id)}
+        />
+      )}
 
       {!hideLibrarian && (
         <div className={`wos-lib${openBook ? " h" : ""}`}>
